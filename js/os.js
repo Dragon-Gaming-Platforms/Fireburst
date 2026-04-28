@@ -78,6 +78,10 @@ function loadWindowState() {
 // GLOBAL AUTH SYSTEM (Single Sign-On with JSONP Bypass)
 // --------------------------------------------------------
 let isLoginMode = true;
+function getConfiguredBackendUrl() {
+    if (!window.RUNTIME_CONFIG || typeof window.RUNTIME_CONFIG.BACKEND_URL !== 'string') return '';
+    return window.RUNTIME_CONFIG.BACKEND_URL.trim();
+}
 
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
@@ -125,7 +129,8 @@ function jsonpRequest(url, payload) {
 function checkAuth() {
     const email = safeLSGet('os_email', null);
     const pass = safeLSGet('os_password', null);
-    const url = safeLSGet('chat_backend_url', null);
+    const configUrl = getConfiguredBackendUrl();
+    const url = safeLSGet('chat_backend_url', configUrl || null);
     
     // Auto-fill all the fields (including password)
     if (url) document.getElementById('backend-url').value = url;
@@ -909,5 +914,7 @@ document.getElementById('ctx-new-folder').onclick = async () => {
 // Failsafe: Force text boxes to populate immediately just in case
 const savedUrl = safeLSGet('chat_backend_url', null);
 const savedEmail = safeLSGet('os_email', null);
-if (savedUrl) document.getElementById('backend-url').value = savedUrl;
+const runtimeBackendUrl = getConfiguredBackendUrl();
+if (runtimeBackendUrl && !savedUrl) safeLSSet('chat_backend_url', runtimeBackendUrl);
+if (savedUrl || runtimeBackendUrl) document.getElementById('backend-url').value = savedUrl || runtimeBackendUrl;
 if (savedEmail) document.getElementById('login-email').value = savedEmail;
