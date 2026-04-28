@@ -1,0 +1,90 @@
+name: Deploy static site to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.1
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install wasm tooling for Scramjet
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binaryen
+          cargo install wasm-bindgen-cli --locked
+
+      - name: Build WebVM into vendor/webvm
+        run: |
+          rm -rf .vendor-src/webvm
+          git clone --depth 1 https://github.com/leaningtech/webvm.git .vendor-src/webvm
+          cd .vendor-src/webvm
+          npm pkg set devDependencies.labs="git+https://github.com/leaningtech/labs.git"
+          npm install
+          WEBVM_MODE=github npm run build
+          cd "$GITHUB_WORKSPACE"
+          rm -rf vendor/webvm
+          mkdir -p vendor/webvm
+          cp -R .vendor-src/webvm/build/. vendor/webvm/
+          if [ -f vendor/webvm/alpine.html ]; then rm vendor/webvm/alpine.html; fi
+
+      - name: Build Scramjet demo into vendor/scramjet
+        run: |
+          rm -rf .vendor-src/scramjet
+          git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
+          cd .vendor-src/scramjet
+          pnpm install
+          pnpm --filter @mercuryworkshop/scramjet rewriter:build
+          pnpm --filter @mercuryworkshop/scramjet build
+          pnpm --filter @mercuryworkshop/scramjet-demo build
+          cd "$GITHUB_WORKSPACE"
+          rm -rf vendor/scramjet
+          mkdir -p vendor/scramjet
+          cp -R .vendor-src/scramjet/packages/demo/dist/. vendor/scramjet/
+
+      - name: Generate WebVM index.list files
+        run: |
+          while IFS= read -r dir; do
+            ls "$dir" > "$dir/index.list"
+          done < <(find vendor/webvm -type d)
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
