@@ -41,7 +41,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y binaryen
+          rustup target add wasm32-unknown-unknown
           cargo install wasm-bindgen-cli --locked
+          cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - name: Build WebVM into vendor/webvm
         run: |
@@ -50,11 +53,40 @@ jobs:
           cd .vendor-src/webvm
           npm pkg set devDependencies.labs="git+https://github.com/leaningtech/labs.git"
           npm install
-          npm run build
-          cd "$GITHUB_WORKSPACE"
+          IMAGE_NAME="fireburst_git.ext2"
+          TAG="fireburst-webvm-image"
+          BUILD_ROOT="$PWD"
+
+          docker build "$GITHUB_WORKSPACE" --file "$GITHUB_WORKSPACE/dockerfiles/webvm-git.Dockerfile" --tag "$TAG" --platform=i386
+          CONTAINER_ID="$(docker run --dns 8.8.8.8 --dns 8.8.4.4 -d "$TAG")"
+
+          CMD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[:1]')"
+          ARGS_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[1:]')"
+          ENV_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Env')"
+          CWD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.WorkingDir')"
+
+          sudo fallocate -l 900M "$IMAGE_NAME"
+          sudo mkfs.ext2 -r 0 "$IMAGE_NAME"
+          sudo mount -o loop -t ext2 "$IMAGE_NAME" /mnt/
+          sudo docker cp -a "${CONTAINER_ID}:/" /mnt/
+          sudo umount /mnt/
+
+          sed -i 's#IMAGE_URL#"'"$IMAGE_NAME"'"#g' config_github_terminal.js
+          sed -i 's#CMD#'"$CMD_JSON"'#g' config_github_terminal.js
+          sed -i 's#ARGS#'"$ARGS_JSON"'#g' config_github_terminal.js
+          sed -i 's#ENV#'"$ENV_JSON"'#g' config_github_terminal.js
+          sed -i 's#CWD#'"$CWD_JSON"'#g' config_github_terminal.js
+
+          WEBVM_MODE=github npm run build
+
           rm -rf vendor/webvm
           mkdir -p vendor/webvm
-          cp -R .vendor-src/webvm/build/. vendor/webvm/
+          cp -R "$BUILD_ROOT/build/." vendor/webvm/
+          if [ -f "$BUILD_ROOT/build/alpine.html" ]; then rm -f "$BUILD_ROOT/build/alpine.html"; fi
+          split "$BUILD_ROOT/$IMAGE_NAME" "vendor/webvm/$IMAGE_NAME.c" -a 6 -b 128k -x --additional-suffix=.txt
+          stat -c%s "$BUILD_ROOT/$IMAGE_NAME" > "vendor/webvm/$IMAGE_NAME.meta"
+          rm -f "$BUILD_ROOT/$IMAGE_NAME"
+          docker rm -f "$CONTAINER_ID"
           if [ -f vendor/webvm/alpine.html ]; then rm vendor/webvm/alpine.html; fi
 
       - name: Build Scramjet demo into vendor/scramjet
@@ -62,6 +94,7 @@ jobs:
           rm -rf .vendor-src/scramjet
           git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
           cd .vendor-src/scramjet
+          export PATH="$HOME/.cargo/bin:$PATH"
           pnpm install
           pnpm --filter @mercuryworkshop/scramjet rewriter:build
           pnpm --filter @mercuryworkshop/scramjet build
