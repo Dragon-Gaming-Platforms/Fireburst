@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #111; color: #f3f3f3; display: flex; flex-direction: column; height: 100vh; }
+    .bar { display: flex; gap: 10px; align-items: center; background: #1a1a1a; border-bottom: 1px solid #2b2b2b; padding: 10px 12px; }
+    .bar strong { font-size: 13px; }
+    .bar input { flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #3a3a3a; background: #0f0f0f; color: #fff; }
+    .bar button { border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer; background: #0078D4; color: #fff; }
+    .bar button:hover { opacity: 0.9; }
+    iframe { flex: 1; width: 100%; border: 0; background: #000; }
+    .note { font-size: 12px; color: #aaa; background: #171717; border-top: 1px solid #2b2b2b; padding: 7px 12px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <strong>Scramjet</strong>
+    <input id="url" placeholder="https://example.com" />
+    <button id="go">Launch</button>
+    <button id="new-tab" style="background:#333;">Open demo in new tab</button>
+  </div>
+
+  <iframe id="scramjet-frame" referrerpolicy="no-referrer" sandbox="allow-forms allow-scripts allow-popups allow-top-navigation allow-same-origin"></iframe>
+
+  <div class="note">Use this as a browser engine inside Fireburst. For best compatibility under strict Google Sites sandboxing, use “Open demo in new tab”.</div>
+
+  <script>
+    const DEMO_BASE = '../../vendor/scramjet/index.html';
+    const DEMO_FALLBACK = 'https://scramjet.mercurywork.shop/';
+    const frame = document.getElementById('scramjet-frame');
+    const urlInput = document.getElementById('url');
+
+    function launch() {
+      const value = urlInput.value.trim();
+      if (!value) {
+        frame.src = DEMO_BASE;
+        return;
+      }
+      const target = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+      frame.src = `${DEMO_BASE}#${encodeURIComponent(target)}`;
+    }
+
+    document.getElementById('go').addEventListener('click', launch);
+    urlInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') launch(); });
+    document.getElementById('new-tab').addEventListener('click', () => {
+      const value = urlInput.value.trim();
+      const target = value ? (/^https?:\/\//i.test(value) ? value : `https://${value}`) : '';
+      const activeBase = frame.src && frame.src !== 'about:blank' ? DEMO_BASE : DEMO_FALLBACK;
+      const full = target ? `${activeBase}#${encodeURIComponent(target)}` : activeBase;
+      window.open(full, '_blank', 'noopener,noreferrer');
+    });
+
+    frame.src = DEMO_BASE;
+  </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; background: #111; color: #e5e5e5; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #1a1a1a; border-bottom: 1px solid #333; }
+        .toolbar b { font-size: 13px; color: #f5f5f5; }
+        .toolbar button { border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; background: #2f2f2f; color: #fff; }
+        .toolbar button:hover { background: #3a3a3a; }
+        #status { margin-left: auto; font-size: 12px; color: #bbb; }
+        iframe { border: 0; flex: 1; width: 100%; background: #000; }
+        .hint { padding: 8px 14px; font-size: 12px; color: #aaa; background: #151515; border-top: 1px solid #2a2a2a; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <b>WebVM Terminal</b>
+        <button id="reload-btn">Reload VM</button>
+        <button id="popout-btn">Open in new tab</button>
+        <span id="status">Loading…</span>
+    </div>
+    <iframe id="vm-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+    <div class="hint">
+        If your host iframe sandbox blocks nested VM features, use “Open in new tab”.
+    </div>
+
+    <script>
+        const VM_URL = '../../vendor/webvm/index.html';
+        const VM_FALLBACK_URL = 'https://webvm.io/';
+        const frame = document.getElementById('vm-frame');
+        const status = document.getElementById('status');
+
+        function loadVM() {
+            status.textContent = 'Loading…';
+            frame.src = VM_URL;
+        }
+
+        frame.addEventListener('load', () => {
+            status.textContent = 'Ready';
+        });
+
+        document.getElementById('reload-btn').addEventListener('click', loadVM);
+        document.getElementById('popout-btn').addEventListener('click', () => {
+            const target = frame.src && frame.src !== 'about:blank' ? frame.src : VM_FALLBACK_URL;
+            window.open(target, '_blank', 'noopener,noreferrer');
+        });
+
+        loadVM();
+    </script>
+</body>
+</html>
