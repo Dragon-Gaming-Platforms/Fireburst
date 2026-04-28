@@ -42,7 +42,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y binaryen
           rustup target add wasm32-unknown-unknown
-          cargo install wasm-bindgen-cli --locked
+          cargo install wasm-bindgen-cli --version 0.2.105 --locked
           cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
@@ -109,6 +109,16 @@ jobs:
           while IFS= read -r dir; do
             ls "$dir" > "$dir/index.list"
           done < <(find vendor/webvm -type d)
+
+      - name: Inject runtime backend config from secret
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          cat > js/runtime-config.js <<EOF
+          window.RUNTIME_CONFIG = {
+              BACKEND_URL: "${BACKEND_URL}"
+          };
+          EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
