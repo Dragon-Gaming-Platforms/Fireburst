@@ -50,7 +50,7 @@ jobs:
           cd .vendor-src/webvm
           npm pkg set devDependencies.labs="git+https://github.com/leaningtech/labs.git"
           npm install
-          WEBVM_MODE=github npm run build
+          npm run build
           cd "$GITHUB_WORKSPACE"
           rm -rf vendor/webvm
           mkdir -p vendor/webvm
