@@ -85,7 +85,7 @@ function getConfiguredBackendUrl() {
 
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
-    document.getElementById('auth-title').innerText = isLoginMode ? "Welcome Back" : "Create Account";
+    document.getElementById('auth-title').innerText = isLoginMode ? "Fireburst OS" : "Create Account";
     document.getElementById('auth-btn').innerText = isLoginMode ? "Unlock" : "Sign Up";
     document.getElementById('auth-toggle').innerText = isLoginMode ? "Need an account? Sign up here" : "Already have an account? Login here";
     document.getElementById('login-error').style.display = 'none';
