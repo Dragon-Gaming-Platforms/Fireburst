@@ -98,7 +98,8 @@ jobs:
           git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
           cd .vendor-src/scramjet
           export PATH="$HOME/.cargo/bin:$PATH"
-          pnpm install --allow-build=esbuild --allow-build=core-js --allow-build=bufferutil
+          pnpm install
+          pnpm rebuild esbuild core-js bufferutil
           pnpm --filter @mercuryworkshop/scramjet rewriter:build
           pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
           pnpm --filter @mercuryworkshop/scramjet-demo build
