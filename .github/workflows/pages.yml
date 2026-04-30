@@ -100,7 +100,7 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           pnpm install
           pnpm --filter @mercuryworkshop/scramjet rewriter:build
-          pnpm --filter @mercuryworkshop/scramjet build
+          pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
           pnpm --filter @mercuryworkshop/scramjet-demo build
           cd "$GITHUB_WORKSPACE"
           rm -rf vendor/scramjet
