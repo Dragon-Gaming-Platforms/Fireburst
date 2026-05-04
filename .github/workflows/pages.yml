@@ -96,17 +96,27 @@ jobs:
         run: |
           rm -rf .vendor-src/scramjet
           git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
-          cd .vendor-src/scramjet
+          cd .vendor-src/scramjet # <--- Enter the correct directory
+          
           export PATH="$HOME/.cargo/bin:$PATH"
           pnpm install
           pnpm rebuild esbuild core-js bufferutil
           pnpm --filter @mercuryworkshop/scramjet rewriter:build
           pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
-          pnpm --filter @mercuryworkshop/scramjet-demo build
+
+          # Find the path to libcurl while we are still in this directory
+          LIBCURL_JS="$(node --input-type=module -e "import { createRequire } from 'node:module'; const r=createRequire(import.meta.url); process.stdout.write(r.resolve('@mercuryworkshop/libcurl-transport/dist/index.js'));")"
+          
+          # Now, change back to the workspace root to perform the copies with clean paths
           cd "$GITHUB_WORKSPACE"
-          rm -rf vendor/scramjet
+          
           mkdir -p vendor/scramjet
-          cp -R .vendor-src/scramjet/packages/demo/dist/. vendor/scramjet/
+          cp "$LIBCURL_JS" vendor/scramjet/libcurl-transport.js
+          cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js vendor/scramjet/scramjet_bundled.js
+          cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm vendor/scramjet/scramjet.wasm
+          cp .vendor-src/scramjet/packages/controller/dist/controller.api.js vendor/scramjet/controller.api.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js vendor/scramjet/controller.inject.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js vendor/scramjet/controller.sw.js
 
       - name: Generate WebVM index.list files
         run: |
