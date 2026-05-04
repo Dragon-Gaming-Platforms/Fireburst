@@ -57,30 +57,20 @@ jobs:
 
           export PATH="$HOME/.cargo/bin:$PATH"
 
-          # Install all deps and allow all build scripts (no interactive prompt)
+          # Install with unsafe-perm to allow build scripts
           pnpm install --config.unsafe-perm=true
 
-          # Force run blocked build scripts
+          # Force rebuild blocked packages
           pnpm rebuild bufferutil || true
           pnpm rebuild esbuild || true
 
-          # Write pnpm's build approval file directly
-          cat > .pnpm-build-approved.json <<'EOF'
-          {
-            "bufferutil": true,
-            "core-js": true,
-            "esbuild": true
-          }
-          EOF
+          # Build the WASM rewriter (correct filter name from package.json)
+          pnpm --filter @mercuryworkshop/scramjet rewriter:build
 
-          # Build the WASM rewriter
-          pnpm --filter @mercuryworkshop/scramjet-core rewriter:build || \
-          (cd packages/core && pnpm run rewriter:build)
+          # Build using the correct top-level build script which handles tsx/rspack properly
+          pnpm --filter @mercuryworkshop/scramjet build
 
-          # Build all packages
-          pnpm --recursive run build || pnpm run build
-
-          # Debug: show what exists
+          # Debug: show what was produced
           echo "=== Built JS files ==="
           find . -path "*/dist/*.js" | grep -v node_modules | sort
           echo "=== libcurl locations ==="
@@ -90,14 +80,13 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           mkdir -p vendor/scramjet
 
-          # Copy the 3 missing files that index.html needs
+          # Find libcurl-transport
           LIBCURL=$(find .vendor-src/scramjet -path "*libcurl-transport*" -name "*.js" \
             | grep -v "node_modules/.pnpm" \
             | grep "dist" \
             | head -1)
 
           if [[ -z "$LIBCURL" ]]; then
-            # Fallback: search all node_modules
             LIBCURL=$(find .vendor-src/scramjet/node_modules -path "*libcurl-transport*dist*" -name "*.js" | head -1)
           fi
 
