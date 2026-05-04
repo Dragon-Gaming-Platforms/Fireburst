@@ -1,137 +1,165 @@
 name: Deploy static site to GitHub Pages
 
+
 on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
+ push:
+   branches: ["main"]
+ workflow_dispatch:
+
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+ contents: read
+ pages: write
+ id-token: write
+
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+ group: "pages"
+ cancel-in-progress: false
+
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+ deploy:
+   environment:
+     name: github-pages
+     url: ${{ steps.deployment.outputs.page_url }}
+   runs-on: ubuntu-latest
+   steps:
+     - name: Checkout
+       uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.12.1
+     - name: Setup Node
+       uses: actions/setup-node@v4
+       with:
+         node-version: "20"
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install wasm tooling for Scramjet
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
-          rustup target add wasm32-unknown-unknown
-          rustup toolchain install nightly
-          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-          rustup target add wasm32-unknown-unknown --toolchain nightly-x86_64-unknown-linux-gnu
-          cargo install wasm-bindgen-cli --version 0.2.105 --locked
-          cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+     - name: Setup pnpm
+       uses: pnpm/action-setup@v4
+       with:
+         version: 10.12.1
 
-      - name: Build WebVM into vendor/webvm
-        run: |
-          rm -rf .vendor-src/webvm
-          git clone --depth 1 https://github.com/leaningtech/webvm.git .vendor-src/webvm
-          cd .vendor-src/webvm
-          npm pkg set devDependencies.labs="git+https://github.com/leaningtech/labs.git"
-          npm install
-          IMAGE_NAME="fireburst_git.ext2"
-          TAG="fireburst-webvm-image"
-          BUILD_ROOT="$PWD"
 
-          docker build "$GITHUB_WORKSPACE" --file "$GITHUB_WORKSPACE/dockerfiles/webvm-git.Dockerfile" --tag "$TAG" --platform=i386
-          CONTAINER_ID="$(docker run --dns 8.8.8.8 --dns 8.8.4.4 -d "$TAG")"
+     - name: Setup Rust
+       uses: dtolnay/rust-toolchain@stable
 
-          CMD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[:1]')"
-          ARGS_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[1:]')"
-          ENV_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Env')"
-          CWD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.WorkingDir')"
 
-          sudo fallocate -l 900M "$IMAGE_NAME"
-          sudo mkfs.ext2 -r 0 "$IMAGE_NAME"
-          sudo mount -o loop -t ext2 "$IMAGE_NAME" /mnt/
-          sudo docker cp -a "${CONTAINER_ID}:/" /mnt/
-          sudo umount /mnt/
+     - name: Install wasm tooling for Scramjet
+       run: |
+        sudo apt-get update
+        sudo apt-get install -y binaryen
+        rustup target add wasm32-unknown-unknown
+        rustup toolchain install nightly
+        rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
+        rustup target add wasm32-unknown-unknown --toolchain nightly-x86_64-unknown-linux-gnu
+        cargo install wasm-bindgen-cli --version 0.2.105 --locked
+        cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
+        echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-          sed -i 's#IMAGE_URL#"'"$IMAGE_NAME"'"#g' config_github_terminal.js
-          sed -i 's#CMD#'"$CMD_JSON"'#g' config_github_terminal.js
-          sed -i 's#ARGS#'"$ARGS_JSON"'#g' config_github_terminal.js
-          sed -i 's#ENV#'"$ENV_JSON"'#g' config_github_terminal.js
-          sed -i 's#CWD#'"$CWD_JSON"'#g' config_github_terminal.js
 
-          WEBVM_MODE=github npm run build
+     - name: Build WebVM into vendor/webvm
+       run: |
+        rm -rf .vendor-src/webvm
+        git clone --depth 1 https://github.com/leaningtech/webvm.git .vendor-src/webvm
+        cd .vendor-src/webvm
+        npm pkg set devDependencies.labs="git+https://github.com/leaningtech/labs.git"
+        npm install
+        IMAGE_NAME="fireburst_git.ext2"
+        TAG="fireburst-webvm-image"
+        BUILD_ROOT="$PWD"
 
-          rm -rf vendor/webvm
-          mkdir -p vendor/webvm
-          cp -R "$BUILD_ROOT/build/." vendor/webvm/
-          if [ -f "$BUILD_ROOT/build/alpine.html" ]; then rm -f "$BUILD_ROOT/build/alpine.html"; fi
-          split "$BUILD_ROOT/$IMAGE_NAME" "vendor/webvm/$IMAGE_NAME.c" -a 6 -b 128k -x --additional-suffix=.txt
-          stat -c%s "$BUILD_ROOT/$IMAGE_NAME" > "vendor/webvm/$IMAGE_NAME.meta"
-          rm -f "$BUILD_ROOT/$IMAGE_NAME"
-          docker rm -f "$CONTAINER_ID"
-          if [ -f vendor/webvm/alpine.html ]; then rm vendor/webvm/alpine.html; fi
 
-      - name: Build Scramjet demo into vendor/scramjet
-        run: |
-          rm -rf .vendor-src/scramjet
-          git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
-          cd .vendor-src/scramjet
-          export PATH="$HOME/.cargo/bin:$PATH"
-          pnpm install
-          pnpm rebuild esbuild core-js bufferutil
-          pnpm --filter @mercuryworkshop/scramjet rewriter:build
-          pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
-          pnpm --filter @mercuryworkshop/scramjet-demo build
-          cd "$GITHUB_WORKSPACE"
-          rm -rf vendor/scramjet
-          mkdir -p vendor/scramjet
-          cp -R .vendor-src/scramjet/packages/demo/dist/. vendor/scramjet/
+        docker build "$GITHUB_WORKSPACE" --file "$GITHUB_WORKSPACE/dockerfiles/webvm-git.Dockerfile" --tag "$TAG" --platform=i386
+        CONTAINER_ID="$(docker run --dns 8.8.8.8 --dns 8.8.4.4 -d "$TAG")"
 
-      - name: Generate WebVM index.list files
-        run: |
-          while IFS= read -r dir; do
-            ls "$dir" > "$dir/index.list"
-          done < <(find vendor/webvm -type d)
 
-      - name: Inject runtime backend config from secret
-        env:
-          BACKEND_URL: ${{ secrets.BACKEND_URL }}
-        run: |
-          cat > js/runtime-config.js <<EOF
-          window.RUNTIME_CONFIG = {
-              BACKEND_URL: "${BACKEND_URL}"
-          };
-          EOF
+        CMD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[:1]')"
+        ARGS_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Cmd[1:]')"
+        ENV_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.Env')"
+        CWD_JSON="$(docker inspect "$CONTAINER_ID" | jq --compact-output '.[0].Config.WorkingDir')"
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: "."
+        sudo fallocate -l 900M "$IMAGE_NAME"
+        sudo mkfs.ext2 -r 0 "$IMAGE_NAME"
+        sudo mount -o loop -t ext2 "$IMAGE_NAME" /mnt/
+        sudo docker cp -a "${CONTAINER_ID}:/" /mnt/
+        sudo umount /mnt/
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+
+        sed -i 's#IMAGE_URL#"'"$IMAGE_NAME"'"#g' config_github_terminal.js
+        sed -i 's#CMD#'"$CMD_JSON"'#g' config_github_terminal.js
+        sed -i 's#ARGS#'"$ARGS_JSON"'#g' config_github_terminal.js
+        sed -i 's#ENV#'"$ENV_JSON"'#g' config_github_terminal.js
+        sed -i 's#CWD#'"$CWD_JSON"'#g' config_github_terminal.js
+
+
+        WEBVM_MODE=github npm run build
+
+
+        rm -rf vendor/webvm
+        mkdir -p vendor/webvm
+        cp -R "$BUILD_ROOT/build/." vendor/webvm/
+        if [ -f "$BUILD_ROOT/build/alpine.html" ]; then rm -f "$BUILD_ROOT/build/alpine.html"; fi
+        split "$BUILD_ROOT/$IMAGE_NAME" "vendor/webvm/$IMAGE_NAME.c" -a 6 -b 128k -x --additional-suffix=.txt
+        stat -c%s "$BUILD_ROOT/$IMAGE_NAME" > "vendor/webvm/$IMAGE_NAME.meta"
+        rm -f "$BUILD_ROOT/$IMAGE_NAME"
+        docker rm -f "$CONTAINER_ID"
+        if [ -f vendor/webvm/alpine.html ]; then rm vendor/webvm/alpine.html; fi
+
+
+     - name: Build Scramjet demo into vendor/scramjet
+       run: |
+        rm -rf .vendor-src/scramjet
+        git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
+        cd .vendor-src/scramjet
+        export PATH="$HOME/.cargo/bin:$PATH"
+        pnpm install
+        pnpm rebuild esbuild core-js bufferutil
+        pnpm --filter @mercuryworkshop/scramjet rewriter:build
+        pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
+        cd "$GITHUB_WORKSPACE"
+        mkdir -p vendor/scramjet
+        LIBCURL_JS="$(node --input-type=module -e "import { createRequire } from 'node:module'; const r=createRequire(import.meta.url); process.stdout.write(r.resolve('@mercuryworkshop/libcurl-transport/dist/index.js'));")"
+        cp "$LIBCURL_JS" vendor/scramjet/libcurl-transport.js
+        cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js vendor/scramjet/scramjet_bundled.js
+        cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm vendor/scramjet/scramjet.wasm
+        cp .vendor-src/scramjet/packages/controller/dist/controller.api.js vendor/scramjet/controller.api.js
+        cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js vendor/scramjet/controller.inject.js
+        cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js vendor/scramjet/controller.sw.js
+
+
+     - name: Generate WebVM index.list files
+       run: |
+        while IFS= read -r dir; do
+          ls "$dir" > "$dir/index.list"
+        done < <(find vendor/webvm -type d)
+
+
+     - name: Inject runtime backend config from secret
+       env:
+         BACKEND_URL: ${{ secrets.BACKEND_URL }}
+       run: |
+        cat > js/runtime-config.js <<EOF
+        window.RUNTIME_CONFIG = {
+            BACKEND_URL: "${BACKEND_URL}"
+        };
+        EOF
+
+
+     - name: Setup Pages
+       uses: actions/configure-pages@v5
+
+
+     - name: Upload artifact
+       uses: actions/upload-pages-artifact@v3
+       with:
+         path: "."
+
+
+     - name: Deploy to GitHub Pages
+       id: deployment
+       uses: actions/deploy-pages@v4
+
+
+
