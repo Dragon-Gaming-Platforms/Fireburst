@@ -60,46 +60,46 @@ jobs:
           # Step 1: pnpm i
           pnpm install --config.unsafe-perm=true
 
-          # Step 2: pnpm rewriter:build (from workspace root as README says)
-          pnpm rewriter:build
+          # Step 2: Build rewriter (must be done from packages/core)
+          cd packages/core
+          pnpm run rewriter:build
+          cd ../..
 
-          # Step 3: pnpm build (from workspace root as README says)
+          # Step 3: pnpm build (now from workspace root)
           pnpm build
 
           # Debug: show what was produced
           echo "=== Built JS files ==="
           find . -path "*/dist/*.js" | grep -v node_modules | sort
-          echo "=== libcurl locations ==="
-          find . -name "libcurl*" | sort
-          find ./node_modules -path "*libcurl-transport*" -name "*.js" 2>/dev/null | sort || true
+          echo "=== Built WASM files ==="
+          find . -path "*/dist/*.wasm" | sort
 
           cd "$GITHUB_WORKSPACE"
           mkdir -p vendor/scramjet
 
-          # Find libcurl-transport
-          LIBCURL=$(find .vendor-src/scramjet -path "*libcurl-transport*" -name "*.js" \
-            | grep -v "node_modules/.pnpm" \
-            | grep "dist" \
-            | head -1)
+          # Copy scramjet core files
+          cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js         vendor/scramjet/scramjet_bundled.js
+          cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm               vendor/scramjet/scramjet.wasm
+
+          # Copy controller files
+          cp .vendor-src/scramjet/packages/controller/dist/controller.api.js     vendor/scramjet/controller.api.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js  vendor/scramjet/controller.inject.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js      vendor/scramjet/controller.sw.js
+
+          # Find and copy libcurl-transport
+          LIBCURL=$(find .vendor-src/scramjet/node_modules/@mercuryworkshop/libcurl-transport -name "*.js" -path "*/dist/*" | head -1)
 
           if [[ -z "$LIBCURL" ]]; then
-            LIBCURL=$(find .vendor-src/scramjet/node_modules -path "*libcurl-transport*dist*" -name "*.js" | head -1)
-          fi
-
-          if [[ -z "$LIBCURL" ]]; then
-            echo "::error::Cannot find libcurl-transport built output"
-            find .vendor-src/scramjet/node_modules -maxdepth 4 -name "libcurl*" || true
+            echo "::error::Cannot find libcurl-transport"
+            find .vendor-src/scramjet/node_modules -maxdepth 3 -name "libcurl*" || true
             exit 1
           fi
 
           echo "Using libcurl-transport: $LIBCURL"
           cp "$LIBCURL" vendor/scramjet/libcurl-transport.js
 
-          cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js         vendor/scramjet/scramjet_bundled.js
-          cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm               vendor/scramjet/scramjet.wasm
-          cp .vendor-src/scramjet/packages/controller/dist/controller.api.js     vendor/scramjet/controller.api.js
-          cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js  vendor/scramjet/controller.inject.js
-          cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js      vendor/scramjet/controller.sw.js
+          echo "=== Final vendor/scramjet contents ==="
+          ls -lah vendor/scramjet/
 
       - name: Build WebVM into vendor/webvm
         run: |
