@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -57,18 +57,14 @@ jobs:
 
           export PATH="$HOME/.cargo/bin:$PATH"
 
-          # Install with unsafe-perm to allow build scripts
+          # Step 1: pnpm i
           pnpm install --config.unsafe-perm=true
 
-          # Force rebuild blocked packages
-          pnpm rebuild bufferutil || true
-          pnpm rebuild esbuild || true
+          # Step 2: pnpm rewriter:build (from workspace root as README says)
+          pnpm rewriter:build
 
-          # Build the WASM rewriter (correct filter name from package.json)
-          pnpm --filter @mercuryworkshop/scramjet rewriter:build
-
-          # Build using the correct top-level build script which handles tsx/rspack properly
-          pnpm --filter @mercuryworkshop/scramjet build
+          # Step 3: pnpm build (from workspace root as README says)
+          pnpm build
 
           # Debug: show what was produced
           echo "=== Built JS files ==="
