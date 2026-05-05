@@ -57,7 +57,7 @@ jobs:
 
           export PATH="$HOME/.cargo/bin:$PATH"
 
-          # Step 1: pnpm i
+          # Step 1: Install dependencies
           pnpm install --config.unsafe-perm=true
 
           # Step 2: Build rewriter (from packages/core)
@@ -65,16 +65,8 @@ jobs:
           pnpm run rewriter:build
           cd ../..
 
-          # Step 3: Build each package that has a build script
+          # Step 3: Build all packages via rspack (run from core package)
           cd packages/core
-          pnpm run build
-          cd ../..
-
-          cd packages/controller
-          pnpm run build
-          cd ../..
-
-          cd packages/bootstrap
           pnpm run build
           cd ../..
 
