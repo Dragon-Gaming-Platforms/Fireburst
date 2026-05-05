@@ -88,17 +88,24 @@ jobs:
           cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js  vendor/scramjet/controller.inject.js
           cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js      vendor/scramjet/controller.sw.js
 
-          # Find and copy libcurl-transport
-          LIBCURL=$(find .vendor-src/scramjet/node_modules/@mercuryworkshop/libcurl-transport -name "*.js" -path "*/dist/*" | head -1)
+          # Install libcurl-transport separately with npm to get the built dist
+          echo "=== Installing libcurl-transport ==="
+          mkdir -p .vendor-tmp
+          cd .vendor-tmp
+          npm init -y
+          npm install @mercuryworkshop/libcurl-transport
+          
+          LIBCURL=$(find node_modules/@mercuryworkshop/libcurl-transport -name "*.js" -path "*/dist/*" | head -1)
 
           if [[ -z "$LIBCURL" ]]; then
-            echo "::error::Cannot find libcurl-transport"
-            find .vendor-src/scramjet/node_modules -maxdepth 3 -name "libcurl*" || true
+            echo "::error::Cannot find libcurl-transport after npm install"
+            find node_modules/@mercuryworkshop -type f -name "*.js" || true
             exit 1
           fi
 
           echo "Using libcurl-transport: $LIBCURL"
-          cp "$LIBCURL" vendor/scramjet/libcurl-transport.js
+          cp "$LIBCURL" "$GITHUB_WORKSPACE/vendor/scramjet/libcurl-transport.js"
+          cd "$GITHUB_WORKSPACE"
 
           echo "=== Final vendor/scramjet contents ==="
           ls -lah vendor/scramjet/
