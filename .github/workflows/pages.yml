@@ -90,9 +90,8 @@ jobs:
 
           # Install libcurl-transport separately with npm to get the built dist
           echo "=== Installing libcurl-transport ==="
-          mkdir -p .vendor-tmp
-          cd .vendor-tmp
-          npm init -y
+          mkdir -p vendor-tmp
+          cd vendor-tmp
           npm install @mercuryworkshop/libcurl-transport
           
           LIBCURL=$(find node_modules/@mercuryworkshop/libcurl-transport -name "*.js" -path "*/dist/*" | head -1)
