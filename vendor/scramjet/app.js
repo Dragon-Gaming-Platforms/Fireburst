@@ -1,5 +1,7 @@
 (function () {
   const WISP_URL = "wss://wisp.mercurywork.shop/";
+  // Dynamically resolve the subfolder base path (e.g., /Fireburst/vendor/scramjet/)
+  const BASE = new URL("./", location.href).toString();
 
   const urlInput = document.getElementById("url");
   const frameEl = document.getElementById("frame");
@@ -68,9 +70,11 @@
       serviceworker: sw,
       transport: transport,
       config: {
-        scramjetPath: new URL("./scramjet_bundled.js", location.href).toString(),
-        injectPath: new URL("./controller.inject.js", location.href).toString(),
-        wasmPath: new URL("./scramjet.wasm", location.href).toString(),
+        // CRITICAL FIX: Explicitly set prefixes for nested GitHub Pages directories
+        prefix: BASE + "scramjet/",
+        scramjetPath: BASE + "scramjet_bundled.js",
+        injectPath: BASE + "controller.inject.js",
+        wasmPath: BASE + "scramjet.wasm",
       },
       scramjetConfig: $scramjet.defaultConfigDev,
     });
