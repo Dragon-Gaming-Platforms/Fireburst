@@ -13,10 +13,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build-scramjet:
+    name: Build Scramjet
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,7 +33,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install wasm tooling for Scramjet
+      - name: Install wasm tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y binaryen
@@ -47,7 +45,7 @@ jobs:
           cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
-      - name: Build Scramjet into vendor/scramjet
+      - name: Clone and build Scramjet
         run: |
           set -euo pipefail
 
@@ -57,39 +55,33 @@ jobs:
 
           export PATH="$HOME/.cargo/bin:$PATH"
 
-          # Step 1: Install dependencies
           pnpm install --config.unsafe-perm=true
 
-          # Step 2: Build rewriter (from packages/core)
           cd packages/core
           pnpm run rewriter:build
           cd ../..
 
-          # Step 3: Build all packages via rspack (run from core package)
           cd packages/core
           pnpm run build
           cd ../..
 
-          # Debug: show what was produced
           echo "=== Built JS files ==="
           find packages -path "*/dist/*.js" | sort
           echo "=== Built WASM files ==="
           find packages -path "*/dist/*.wasm" | sort
 
-          cd "$GITHUB_WORKSPACE"
+      - name: Copy Scramjet artifacts
+        run: |
           mkdir -p vendor/scramjet
 
-          # Copy scramjet core files
           cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js         vendor/scramjet/scramjet_bundled.js
           cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm               vendor/scramjet/scramjet.wasm
-
-          # Copy controller files
           cp .vendor-src/scramjet/packages/controller/dist/controller.api.js     vendor/scramjet/controller.api.js
           cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js  vendor/scramjet/controller.inject.js
           cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js      vendor/scramjet/controller.sw.js
 
-          # Install libcurl-transport separately with npm to get the built dist
-          echo "=== Installing libcurl-transport ==="
+      - name: Install libcurl-transport
+        run: |
           mkdir -p vendor-tmp
           cd vendor-tmp
           npm install @mercuryworkshop/libcurl-transport
@@ -104,12 +96,24 @@ jobs:
 
           echo "Using libcurl-transport: $LIBCURL"
           cp "$LIBCURL" "$GITHUB_WORKSPACE/vendor/scramjet/libcurl-transport.js"
-          cd "$GITHUB_WORKSPACE"
 
           echo "=== Final vendor/scramjet contents ==="
-          ls -lah vendor/scramjet/
+          ls -lah "$GITHUB_WORKSPACE/vendor/scramjet/"
 
-      - name: Build WebVM into vendor/webvm
+      - name: Upload Scramjet artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: scramjet-build
+          path: vendor/scramjet/
+
+  build-webvm:
+    name: Build WebVM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build WebVM
         run: |
           rm -rf .vendor-src/webvm
           git clone --depth 1 https://github.com/leaningtech/webvm.git .vendor-src/webvm
@@ -136,7 +140,6 @@ jobs:
           sed -i 's#ENV#'"$ENV_JSON"'#g' config_github_terminal.js
           sed -i 's#CWD#'"$CWD_JSON"'#g' config_github_terminal.js
           WEBVM_MODE=github npm run build
-          rm -rf "$GITHUB_WORKSPACE/vendor/webvm"
           mkdir -p "$GITHUB_WORKSPACE/vendor/webvm"
           cp -R "$BUILD_ROOT/build/." "$GITHUB_WORKSPACE/vendor/webvm/"
           split "$BUILD_ROOT/$IMAGE_NAME" "$GITHUB_WORKSPACE/vendor/webvm/$IMAGE_NAME.c" -a 6 -b 128k -x --additional-suffix=.txt
@@ -145,13 +148,42 @@ jobs:
           docker rm -f "$CONTAINER_ID"
           if [ -f "$GITHUB_WORKSPACE/vendor/webvm/alpine.html" ]; then rm "$GITHUB_WORKSPACE/vendor/webvm/alpine.html"; fi
 
-      - name: Generate WebVM index.list files
+      - name: Generate index.list files
         run: |
           while IFS= read -r dir; do
             ls "$dir" > "$dir/index.list"
           done < <(find vendor/webvm -type d)
 
-      - name: Inject runtime backend config from secret
+      - name: Upload WebVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: webvm-build
+          path: vendor/webvm/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: [build-scramjet, build-webvm]
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Scramjet artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: scramjet-build
+          path: vendor/scramjet/
+
+      - name: Download WebVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: webvm-build
+          path: vendor/webvm/
+
+      - name: Inject runtime backend config
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
         run: |
