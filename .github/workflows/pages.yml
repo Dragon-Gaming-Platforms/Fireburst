@@ -139,7 +139,10 @@ jobs:
           sed -i 's#ARGS#'"$ARGS_JSON"'#g' config_github_terminal.js
           sed -i 's#ENV#'"$ENV_JSON"'#g' config_github_terminal.js
           sed -i 's#CWD#'"$CWD_JSON"'#g' config_github_terminal.js
+          
+          # Force the production build configuration to accept subfolder pathing
           WEBVM_MODE=github npm run build
+          
           mkdir -p "$GITHUB_WORKSPACE/vendor/webvm"
           cp -R "$BUILD_ROOT/build/." "$GITHUB_WORKSPACE/vendor/webvm/"
           split "$BUILD_ROOT/$IMAGE_NAME" "$GITHUB_WORKSPACE/vendor/webvm/$IMAGE_NAME.c" -a 6 -b 128k -x --additional-suffix=.txt
