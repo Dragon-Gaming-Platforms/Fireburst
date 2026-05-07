@@ -125,6 +125,36 @@
       }
     });
   </script>
+  <!-- Eruda Inspector Button -->
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+    eruda.init();
+    eruda.hide();
+    
+    const inspectBtn = document.createElement('button');
+    inspectBtn.textContent = 'Inspect';
+    inspectBtn.style.cssText = `
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        padding: 8px 16px;
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        z-index: 999999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    `;
+    inspectBtn.onmouseover = () => inspectBtn.style.background = '#4f46e5';
+    inspectBtn.onmouseout = () => inspectBtn.style.background = '#6366f1';
+    inspectBtn.onclick = () => eruda.show();
+    
+    document.body.appendChild(inspectBtn);
+</script>
     <param name="movie" value="https://cdn.jsdelivr.net/gh/QiProject/flash-games@8a30ea684498b868a7b1cd188bd860ba2042eb56/Bloons-Tower-Defense-4.swf">
     <embed src="https://cdn.jsdelivr.net/gh/QiProject/flash-games@8a30ea684498b868a7b1cd188bd860ba2042eb56/Bloons-Tower-Defense-4.swf" width="100%" height="100%">
 </body>

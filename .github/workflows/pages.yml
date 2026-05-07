@@ -149,7 +149,27 @@ jobs:
           stat -c%s "$BUILD_ROOT/$IMAGE_NAME" > "$GITHUB_WORKSPACE/vendor/webvm/$IMAGE_NAME.meta"
           rm -f "$BUILD_ROOT/$IMAGE_NAME"
           docker rm -f "$CONTAINER_ID"
-          if [ -f "$GITHUB_WORKSPACE/vendor/webvm/alpine.html" ]; then rm "$GITHUB_WORKSPACE/vendor/webvm/alpine.html"; fi
+          if [ -f vendor/webvm/alpine.html ]; then rm vendor/webvm/alpine.html; fi
+
+      - name: Build Scramjet demo into vendor/scramjet
+        run: |
+          rm -rf .vendor-src/scramjet
+          git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
+          cd .vendor-src/scramjet
+          export PATH="$HOME/.cargo/bin:$PATH"
+          pnpm install
+          pnpm rebuild esbuild core-js bufferutil
+          pnpm --filter @mercuryworkshop/scramjet rewriter:build
+          pnpm dlx tsx ./node_modules/@rspack/cli/bin/rspack.js build --mode production
+          cd "$GITHUB_WORKSPACE"
+          mkdir -p vendor/scramjet
+          LIBCURL_JS="$(node --input-type=module -e "import { createRequire } from 'node:module'; const r=createRequire(import.meta.url); process.stdout.write(r.resolve('@mercuryworkshop/libcurl-transport/dist/index.js'));")"
+          cp "$LIBCURL_JS" vendor/scramjet/libcurl-transport.js
+          cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js vendor/scramjet/scramjet_bundled.js
+          cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm vendor/scramjet/scramjet.wasm
+          cp .vendor-src/scramjet/packages/controller/dist/controller.api.js vendor/scramjet/controller.api.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js vendor/scramjet/controller.inject.js
+          cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js vendor/scramjet/controller.sw.js
 
       - name: Generate index.list files
         run: |
