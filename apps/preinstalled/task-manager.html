@@ -58,6 +58,7 @@
             <thead>
                 <tr>
                     <th>App Name</th>
+                    <th>Type</th>
                     <th>Status</th>
                     <th style="text-align: right;">Action</th>
                 </tr>
@@ -78,26 +79,36 @@
             if(wins && wins.length > 0) {
                 wins.forEach((w, index) => {
                     let displayName = 'Unknown Process';
+                    let appType = 'Web App';
                     try {
                         const appMeta = registry.find(a => a.id === w.appId);
                         if (appMeta) {
                             displayName = appMeta.name;
+                            // Determine app type
+                            if (appMeta.category === 'Native') appType = 'Native';
+                            else if (appMeta.category === 'AI') appType = 'AI Assistant';
+                            else if (appMeta.category === 'Proxy') appType = 'Proxy';
                         } else if (w.winElement) {
                             // Strip out any HTML icons from the title
                             displayName = w.winElement.querySelector('.window-title').innerText.trim();
+                            // Check for native windows
+                            if (displayName.includes('(Native)')) appType = 'Native';
+                            else if (displayName.includes('(Wine)')) appType = 'Wine';
+                            else if (displayName.includes('AI')) appType = 'AI Assistant';
                         }
                     } catch(e) {}
                     
                     newHTML += `
                         <tr>
                             <td style="font-weight: 500;">${displayName}</td>
+                            <td>${appType}</td>
                             <td><span class="status-running">Running</span></td>
                             <td style="text-align: right;"><button onclick="kill(${index})">End Task</button></td>
                         </tr>
                     `;
                 });
             } else {
-                newHTML = `<tr><td colspan="3"><div class="empty-state">No apps currently running.</div></td></tr>`;
+                newHTML = `<tr><td colspan="4"><div class="empty-state">No apps currently running.</div></td></tr>`;
             }
 
             // Only update the screen if something changed to stop flickering

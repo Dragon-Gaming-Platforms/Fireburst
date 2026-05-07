@@ -280,6 +280,7 @@ function openWindow(appOrTitle, url, contentHTML = null, fallbackAppId = null) {
             <div class="window-controls">
             <div class="win-btn minimize" style="font-size: 16px;">&minus;</div>
             <div class="win-btn box" style="font-size: 16px;">&#9633;</div>
+            <div class="win-btn inspect" style="font-size: 14px;">🔍</div>
             <div class="win-btn open-tab" style="font-size: 14px;">&#10697;</div>
             <div class="win-btn close" style="font-size: 14px;">&#10005;</div>            </div>
         </div>
@@ -341,6 +342,19 @@ if (openTabBtn) {
 
         } catch (err) {
             console.error("Open in new tab failed:", err);
+        }
+    });
+}
+// --- INSPECT FEATURE ---
+const inspectBtn = win.querySelector('.inspect');
+if (inspectBtn) {
+    inspectBtn.addEventListener('click', () => {
+        if (iframe && iframe.contentWindow) {
+            try {
+                iframe.contentWindow.eruda.init();
+            } catch (e) {
+                console.warn('Eruda not available in iframe:', e);
+            }
         }
     });
 }
@@ -772,11 +786,19 @@ function openFile(file) {
         openWindow(file.name.split('/').pop(), null, editorHTML);
     }
     // 2. EXECUTABLE APPS (.exe compiled from HTML)
-    else if (ext === 'exe') {
+    else if (ext === 'exe' && file.type !== 'application/x-msdownload') {
         const safeContent = file.content.replace(/"/g, '&quot;');
         const exeHTML = `<iframe srcdoc="${safeContent}" style="width:100%; height:100%; border:none; background:#fff; pointer-events:auto;" sandbox="allow-scripts allow-forms allow-popups allow-same-origin"></iframe>`;
         // Opens exactly like a system app!
         openWindow(file.name.split('/').pop(), null, exeHTML);
+    }
+    // 2.5. WINDOWS EXECUTABLES (.exe) - run with Wine
+    else if (ext === 'exe' && file.type === 'application/x-msdownload') {
+        runWithWine(file);
+    }
+    // 2.6. LINUX EXECUTABLES (.elf) - run with CheerpX
+    else if (ext === 'elf' || file.type === 'application/x-executable') {
+        runWithCheerpX(file);
     }
     // 3. IMAGES
     else if(['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
@@ -845,6 +867,53 @@ function openFile(file) {
         window.osAlert('Error', 'Filetype not supported or unrecognized executable.');
     }
 }
+
+async function runWithCheerpX(file) {
+    try {
+        // Initialize CheerpX if not already done
+        if (!window.cheerpXManager) {
+            await import('js/cheerpx-manager.js');
+        }
+        await window.cheerpXManager.initialize();
+
+        // Create a window for the native app
+        const win = openWindow(file.name.split('/').pop() + ' (Native)', null, '<div id="native-app-container" style="width:100%;height:100%;background:black;"></div>');
+
+        // Run the ELF file
+        const container = win.querySelector('#native-app-container');
+        await window.cheerpXManager.runELF(file);
+
+        // For now, show a terminal interface
+        const terminal = await window.cheerpXManager.createTerminal(container);
+
+    } catch (error) {
+        window.osAlert('Error', 'Failed to run native application: ' + error.message);
+    }
+}
+
+async function runWithWine(file) {
+    try {
+        // Initialize CheerpX if not already done
+        if (!window.cheerpXManager) {
+            await import('js/cheerpx-manager.js');
+        }
+        await window.cheerpXManager.initialize();
+
+        // Create a window for the Wine app
+        const win = openWindow(file.name.split('/').pop() + ' (Wine)', null, '<div id="wine-app-container" style="width:100%;height:100%;background:black;"></div>');
+
+        // Run the EXE file with Wine
+        const container = win.querySelector('#wine-app-container');
+        await window.cheerpXManager.runWine(file);
+
+        // For now, show a terminal interface
+        const terminal = await window.cheerpXManager.createTerminal(container);
+
+    } catch (error) {
+        window.osAlert('Error', 'Failed to run Windows application: ' + error.message);
+    }
+}
+
 // --------------------------------------------------------
 // ACTION CENTER & MENUS
 // --------------------------------------------------------
@@ -878,6 +947,7 @@ function showContextMenu(e, type, data) {
     document.getElementById('ctx-personalize').style.display = type === 'desktop' ? 'block' : 'none';
     document.getElementById('ctx-new-text').style.display = type === 'desktop' ? 'block' : 'none';
     document.getElementById('ctx-new-folder').style.display = type === 'desktop' ? 'block' : 'none';
+    document.getElementById('ctx-inspect').style.display = type === 'desktop' ? 'block' : 'none';
 }
 
 function hideContextMenu() { document.getElementById('context-menu').classList.add('hidden'); }
@@ -910,6 +980,8 @@ document.getElementById('ctx-new-folder').onclick = async () => {
     let name = await window.osPrompt("New Folder", "Enter folder name:");
     if(name) { await VFS.saveFile(name, 'folder', ''); renderDesktop(); showNotification('Created', name + ' created.'); }
 };
+
+document.getElementById('ctx-inspect').onclick = () => { eruda.init(); };
 
 // Failsafe: Force text boxes to populate immediately just in case
 const savedUrl = safeLSGet('chat_backend_url', null);

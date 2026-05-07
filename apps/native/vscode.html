@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VS Code - Native</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #loading {
+            text-align: center;
+            margin-top: 50px;
+        }
+        #vscode-container {
+            width: 100%;
+            height: calc(100vh - 40px);
+            display: none;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            background: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>Loading VS Code...</h2>
+        <p>Initializing CheerpX Linux environment and launching VS Code.</p>
+        <div id="progress">Preparing filesystem...</div>
+    </div>
+
+    <div id="vscode-container">
+        <canvas id="vscode-canvas"></canvas>
+    </div>
+
+    <script type="module">
+        async function launchVSCode() {
+            try {
+                // Initialize CheerpX if not already done
+                if (!window.cheerpXManager) {
+                    await import('../../js/cheerpx-manager.js');
+                }
+
+                await window.cheerpXManager.initialize();
+
+                // Update progress
+                document.getElementById('progress').textContent = 'Launching VS Code...';
+
+                // For now, create a terminal interface since GUI VS Code might be complex
+                // In a real implementation, you'd need to set up X11 and run code
+                const container = document.getElementById('vscode-container');
+                const terminal = await window.cheerpXManager.createTerminal(container);
+
+                // Run VS Code server or similar
+                // Note: This is a simplified version. Real VS Code would require more setup
+                await window.cheerpXManager.runNativeApp('/usr/bin/code', ['--version']);
+
+                document.getElementById('loading').style.display = 'none';
+                container.style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h2>Error Loading VS Code</h2>
+                    <p>${error.message}</p>
+                    <button onclick="location.reload()">Retry</button>
+                `;
+                console.error('Failed to launch VS Code:', error);
+            }
+        }
+
+        launchVSCode();
+    </script>
+</body>
+</html>

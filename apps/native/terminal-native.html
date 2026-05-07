@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Native Terminal</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: black;
+            color: white;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        #terminal {
+            width: 100%;
+            height: 100vh;
+            background: black;
+            color: white;
+            font-size: 14px;
+            padding: 10px;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <h2>Loading Native Terminal...</h2>
+        <p>Initializing CheerpX Linux environment.</p>
+    </div>
+
+    <pre id="terminal"></pre>
+
+    <script type="module">
+        async function launchTerminal() {
+            try {
+                // Initialize CheerpX
+                if (!window.cheerpXManager) {
+                    await import('../../js/cheerpx-manager.js');
+                }
+
+                await window.cheerpXManager.initialize();
+
+                // Initialize BrowserCode for AI integration
+                if (!window.browserCodeManager) {
+                    await import('../../js/browsercode-manager.js');
+                }
+
+                await window.browserCodeManager.initialize();
+
+                // Create terminal
+                const terminalElement = document.getElementById('terminal');
+                const terminal = await window.cheerpXManager.createTerminal(terminalElement);
+
+                // Integrate BrowserCode
+                window.browserCodeManager.integrateWithTerminal({ cx: window.cheerpXManager.cx });
+
+                // Add welcome message
+                terminalElement.textContent += '\nWelcome to Native Linux Terminal with AI support!\n';
+                terminalElement.textContent += 'Type "browsercode" to launch AI assistant.\n';
+                terminalElement.textContent += 'Type "browsercode --model gemini" to switch to Gemini.\n\n';
+
+                document.getElementById('loading').style.display = 'none';
+
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <h2>Error Loading Terminal</h2>
+                    <p>${error.message}</p>
+                    <button onclick="location.reload()">Retry</button>
+                `;
+                console.error('Failed to launch terminal:', error);
+            }
+        }
+
+        launchTerminal();
+    </script>
+</body>
+</html>

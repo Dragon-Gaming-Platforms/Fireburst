@@ -52,6 +52,10 @@
 
     <!-- Custom Context Menu -->
     <div id="fe-context-menu">
+        <div class="fe-menu-item" id="fe-open">📂 Open</div>
+        <div class="fe-menu-item" id="fe-run-native" style="display:none;">🐧 Run Native</div>
+        <div class="fe-menu-item" id="fe-run-wine" style="display:none;">🍷 Run with Wine</div>
+        <div class="fe-menu-item" id="fe-edit-ai" style="display:none;">🤖 Edit with AI</div>
         <div class="fe-menu-item" id="fe-rename">✏️ Rename</div>
         <div class="fe-menu-item" id="fe-delete" style="color:#ff6b6b;">🗑️ Delete</div>
     </div>
@@ -66,6 +70,32 @@
         const feMenu = document.getElementById('fe-context-menu');
 
         document.addEventListener('click', () => feMenu.style.display = 'none');
+
+        // ====================== OPEN ======================
+        document.getElementById('fe-open').onclick = () => {
+            if (!targetFile) return;
+            OS.openFile(targetFile);
+        };
+
+        // ====================== RUN NATIVE ======================
+        document.getElementById('fe-run-native').onclick = async () => {
+            if (!targetFile) return;
+            await OS.runWithCheerpX(targetFile);
+        };
+
+        // ====================== RUN WITH WINE ======================
+        document.getElementById('fe-run-wine').onclick = async () => {
+            if (!targetFile) return;
+            await OS.runWithWine(targetFile);
+        };
+
+        // ====================== EDIT WITH AI ======================
+        document.getElementById('fe-edit-ai').onclick = () => {
+            if (!targetFile) return;
+            // Open AI coding assistant with the file
+            OS.openWindow('AI Coding Assistant', 'apps/native/ai-coding.html');
+            // TODO: Pass file to AI assistant
+        };
 
         // ====================== RENAME ======================
         document.getElementById('fe-rename').onclick = async () => {
@@ -161,6 +191,18 @@
                     div.oncontextmenu = (e) => {
                         e.preventDefault(); e.stopPropagation();
                         targetFile = f;
+                        
+                        // Show/hide menu items based on file type
+                        const ext = displayName.split('.').pop().toLowerCase();
+                        const isExe = ext === 'exe' && f.type === 'application/x-msdownload';
+                        const isElf = ext === 'elf' || f.type === 'application/x-executable';
+                        const isCodeFile = ['txt', 'html', 'js', 'css', 'json', 'py', 'cpp', 'c', 'java'].includes(ext);
+                        
+                        document.getElementById('fe-open').style.display = 'block';
+                        document.getElementById('fe-run-native').style.display = isElf ? 'block' : 'none';
+                        document.getElementById('fe-run-wine').style.display = isExe ? 'block' : 'none';
+                        document.getElementById('fe-edit-ai').style.display = isCodeFile ? 'block' : 'none';
+                        
                         feMenu.style.display = 'flex';
                         feMenu.style.left = e.pageX + 'px';
                         feMenu.style.top = e.pageY + 'px';

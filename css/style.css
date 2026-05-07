@@ -149,6 +149,14 @@ body { margin: 0; overflow: hidden; background: url('https://images.unsplash.com
 .win-btn.open-tab:hover {
     color: cyan;
 }
+
+.win-btn.inspect {
+    color: white;
+}
+
+.win-btn.inspect:hover {
+    color: lime;
+}
 /* -------------------------------------- */
 /* DESKTOP & TASKBAR                      */
 /* -------------------------------------- */
