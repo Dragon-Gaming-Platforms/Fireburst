@@ -16,23 +16,22 @@
 </head>
 <body>
     <div class="toolbar">
-        <b>WebVM Terminal</b>
-        <button id="reload-btn">Reload VM</button>
+        <b>CheerpX Terminal</b>
+        <button id="reload-btn">Reload</button>
         <button id="popout-btn">Open in new tab</button>
         <span id="status">Loading…</span>
     </div>
     <iframe id="vm-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
     <div class="hint">
-        If your host iframe sandbox blocks nested VM features, use “Open in new tab”.
+        If your host iframe sandbox blocks terminal features, use “Open in new tab”.
     </div>
 
     <script>
-        const VM_URL = '../../vendor/webvm/index.html';
-        const VM_FALLBACK_URL = 'https://webvm.io/';
+        const VM_URL = '../../apps/native/terminal-native.html';
         const frame = document.getElementById('vm-frame');
         const status = document.getElementById('status');
 
-        function loadVM() {
+        function loadTerminal() {
             status.textContent = 'Loading…';
             frame.src = VM_URL;
         }
@@ -41,13 +40,12 @@
             status.textContent = 'Ready';
         });
 
-        document.getElementById('reload-btn').addEventListener('click', loadVM);
+        document.getElementById('reload-btn').addEventListener('click', loadTerminal);
         document.getElementById('popout-btn').addEventListener('click', () => {
-            const target = frame.src && frame.src !== 'about:blank' ? frame.src : VM_FALLBACK_URL;
-            window.open(target, '_blank', 'noopener,noreferrer');
+            window.open(VM_URL, '_blank', 'noopener,noreferrer');
         });
 
-        loadVM();
+        loadTerminal();
     </script>
     <!-- Eruda Inspector Button -->
 <script src="https://cdn.jsdelivr.net/npm/eruda"></script>

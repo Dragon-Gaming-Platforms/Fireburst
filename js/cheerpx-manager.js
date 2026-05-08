@@ -1,5 +1,10 @@
 // cheerpx-manager.js - Manages CheerpX Linux environment integration
 
+const CHEERPX_BASE_URL = (() => {
+    const scriptUrl = (document.currentScript && document.currentScript.src) ? document.currentScript.src : window.location.href;
+    return new URL('../vendor/cheerpx/', scriptUrl).href;
+})();
+
 class CheerpXManager {
     constructor() {
         this.cx = null;
@@ -13,26 +18,32 @@ class CheerpXManager {
 
         try {
             // Import CheerpX from local vendor files
-            const CheerpX = await import('/vendor/cheerpx/cx.esm.js');
+            const CheerpX = await import(new URL('cx.esm.js', CHEERPX_BASE_URL).href);
 
-            // Set up file system devices
-            const cloudDevice = await CheerpX.CloudDevice.create(
-                "wss://disks.webvm.io/debian_large_20230522_5044875331.ext2"
-            );
-            const idbDevice = await CheerpX.IDBDevice.create("block1");
-            const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
+            // Set up a local CheerpX disk image served from the repo
+            const rootDiskPath = new URL('cheerpXImage.ext2', CHEERPX_BASE_URL).href;
+            let imageDevice;
+            try {
+                imageDevice = await CheerpX.HttpBytesDevice.create(rootDiskPath);
+            } catch (rootImageError) {
+                throw new Error(`Failed to load CheerpX root image at ${rootDiskPath}: ${rootImageError.message}`);
+            }
+            const idbDevice = await CheerpX.IDBDevice.create("cheerpx-block");
+            const overlayDevice = await CheerpX.OverlayDevice.create(imageDevice, idbDevice);
 
             // Create web device for file sharing
             const webDevice = await CheerpX.WebDevice.create();
             const dataDevice = await CheerpX.WebDevice.create();
 
-            // Create CheerpX Linux instance
+            // Create CheerpX Linux instance with a raw local ext2 root image
             this.cx = await CheerpX.Linux.create({
                 mounts: [
                     { type: "ext2", path: "/", dev: overlayDevice },
                     { type: "dir", path: "/app", dev: webDevice },
                     { type: "dir", path: "/data", dev: dataDevice },
                     { type: "devs", path: "/dev" },
+                    { type: "devpts", path: "/dev/pts" },
+                    { type: "proc", path: "/proc" },
                 ],
             });
 

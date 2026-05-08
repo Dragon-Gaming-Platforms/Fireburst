@@ -1,8 +1,8 @@
 # Vendored Runtime Artifacts
 
-This directory is populated by `.github/workflows/pages.yml` during deployment.
+- `vendor/cheerpx`: local CheerpX runtime files committed to the repo.
+- `vendor/scramjet`: self-hosted Scramjet static bundle built by `.github/workflows/pages.yml`.
 
-- `vendor/webvm`: self-hosted WebVM build output
-- `vendor/scramjet`: self-hosted Scramjet static bundle (Rspack outputs + libcurl transport UMD + a small `index.html` shell)
+Place a CheerpX root filesystem image at `vendor/cheerpx/cheerpXImage.ext2` so the local runtime can initialize from a raw ext2 disk image.
 
-The app entrypoints in `apps/preinstalled/terminal.html` and `apps/browsers/Scramjet.html` point here first, so GitHub Pages serves local copies instead of external demo hosts.
+The app entrypoint in `apps/preinstalled/terminal.html` now loads the native CheerpX terminal at `apps/native/terminal-native.html`.
