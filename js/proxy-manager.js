@@ -2,45 +2,18 @@
 
 class ProxyManager {
     constructor() {
-        this.scramjetUrl = 'vendor/scramjet/'; // Relative path to Scramjet
+        this.scramjetUrl = 'https://scramjet.mercurywork.shop/'; // Online Scramjet instance
         this.proxiedUrls = new Map();
     }
 
     async initialize() {
-        // Scramjet is already included, just ensure it's loaded
-        if (!window.scramjet) {
-            await this.loadScramjet();
-        }
-    }
-
-    async loadScramjet() {
-        // Load Scramjet scripts
-        const scripts = [
-            'vendor/scramjet/app.js',
-            'vendor/scramjet/sw.js'
-        ];
-
-        for (const script of scripts) {
-            await this.loadScript(script);
-        }
-    }
-
-    loadScript(src) {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = reject;
-            document.head.appendChild(script);
-        });
+        // Online Scramjet doesn't need local initialization
+        return Promise.resolve();
     }
 
     proxyUrl(url) {
-        // Use Scramjet to proxy the URL
-        if (window.scramjet && window.scramjet.encodeUrl) {
-            return window.scramjet.encodeUrl(url);
-        }
-        // Fallback: use a simple proxy pattern
+        // For online Scramjet, we'll navigate the iframe directly
+        // The iframe will handle the proxying internally
         return `${this.scramjetUrl}?url=${encodeURIComponent(url)}`;
     }
 
