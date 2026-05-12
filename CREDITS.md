@@ -5,6 +5,7 @@
 There are *so* many websites, services and code that went into this project. A huge thanks to [<cite>Anura OS</cite>](http://github.com/mercuryworkshop/anura); <em>Fireburst</em> was inspired by <em>Anura OS<em> so without it <em>Fireburst</em> would not exist.
 
 Here are the other services and code that need to be mentioned because of how important they have been.
+
 <cite>
 
 * [Cheerpx](http://cheerpx.io)  
@@ -21,9 +22,9 @@ Here are the other services and code that need to be mentioned because of how im
 * [Visual Studio Code](http://code.visualstudio.com/download)
 * [Google Apps Scripts](http://script.google.com)
 * [Cursor](http://cursor.com)
-* Claude Sonnet
-* Claude Haiku
-* Gemini 3.1 - Preview
+* [Claude Sonnet](claude.ai)
+* [Claude Haiku](claude.ai)
+* [Gemini 3.1 - Preview](https://gemini.google.com/)
 * [ChatGPT](http://chatgpt.com)
 
 </cite>
