@@ -7,7 +7,7 @@
 ---
 
 > [!CAUTION]
-> Please note that this project isn't really active anymore. you can find the ongoing version at [Dragon-Gaming-Platforms/Web-OS](https://github.com/Dragon-Gaming-Platforms/Web-OS) with the demo [here](https://dragon-gaming-platforms.github.io/Web-OS/os/).
+> NOTICE: This repository is *purely* __Experimental__ in nature.
 
 #### This is a 100% static repository that can be deployed from the root/ folder by GitHub Pages
 
