@@ -22,54 +22,6 @@
         "preinstalled": false
     },
     {
-        "id": "vscode-native",
-        "name": "VS Code (Native)",
-        "path": "apps/native/vscode.html",
-        "category": "Native",
-        "preinstalled": false,
-        "icon": "\ud83d\udcbb"
-    },
-    {
-        "id": "terminal-native",
-        "name": "Linux Terminal",
-        "path": "apps/native/terminal-native.html",
-        "category": "Native",
-        "preinstalled": false,
-        "icon": "\ud83d\udda5\ufe0f"
-    },
-    {
-        "id": "file-manager-linux",
-        "name": "Linux File Manager",
-        "path": "apps/native/file-manager-linux.html",
-        "category": "Native",
-        "preinstalled": false,
-        "icon": "\ud83d\udcc1"
-    },
-    {
-        "id": "wine-launcher",
-        "name": "Wine Launcher",
-        "path": "apps/native/wine-launcher.html",
-        "category": "Native",
-        "preinstalled": false,
-        "icon": "\ud83c\udf77"
-    },
-    {
-        "id": "ai-coding",
-        "name": "AI Coding Assistant",
-        "path": "apps/native/ai-coding.html",
-        "category": "AI",
-        "preinstalled": false,
-        "icon": "\ud83e\udd16"
-    },
-    {
-        "id": "scramjet-browser",
-        "name": "Scramjet Browser",
-        "path": "apps/proxy/scramjet-browser.html",
-        "category": "Proxy",
-        "preinstalled": false,
-        "icon": "\ud83c\udf10"
-    },
-    {
         "id": "fireburst-browser",
         "name": "Fireburst Browser",
         "path": "apps/browsers/Browser.html",

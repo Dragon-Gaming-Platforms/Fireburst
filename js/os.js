@@ -885,27 +885,11 @@ if (savedEmail) document.getElementById('login-email').value = savedEmail;
 
 // CheerpX integration functions
 async function runWithCheerpX(file) {
-    try {
-        if (!window.cheerpXManager) {
-            await import('./cheerpx-manager.js');
-        }
-        await window.cheerpXManager.initialize();
-        await window.cheerpXManager.runELF(file.content, file.name);
-    } catch (error) {
-        window.osAlert('CheerpX Error', `Failed to run ELF file: ${error.message}`);
-    }
+    window.osAlert('Unavailable', 'Legacy native CheerpX runner has been removed from this build.');
 }
 
 async function runWithWine(file) {
-    try {
-        if (!window.cheerpXManager) {
-            await import('./cheerpx-manager.js');
-        }
-        await window.cheerpXManager.initialize();
-        await window.cheerpXManager.runWine(file.content, file.name);
-    } catch (error) {
-        window.osAlert('Wine Error', `Failed to run Windows executable: ${error.message}`);
-    }
+    window.osAlert('Unavailable', 'Legacy Wine launcher has been removed from this build.');
 }
 
 async function initPWA() {

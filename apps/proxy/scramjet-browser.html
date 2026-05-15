@@ -79,20 +79,7 @@
     <script type="module">
         async function launchScramjetBrowser() {
             try {
-                // Initialize proxy manager
-                if (!window.proxyManager) {
-                    await import('../../js/proxy-manager.js');
-                }
-
-                await window.proxyManager.initialize();
-
-                // Set up browser controls
-                setupBrowserControls();
-
-                // Load default page
-                navigateToUrl('https://example.com');
-
-                document.getElementById('loading').style.display = 'none';
+                throw new Error('Legacy proxy manager was removed from this build.');
 
             } catch (error) {
                 document.getElementById('loading').innerHTML = `

@@ -220,7 +220,6 @@
     <iframe id="browser-frame" sandbox="allow-forms allow-scripts allow-popups allow-top-navigation allow-same-origin"></iframe>
   </div>
 
-  <script src="../js/browser-config.js"></script>
   <script>
     const frame = document.getElementById('browser-frame');
     const urlBar = document.getElementById('url-bar');
@@ -230,7 +229,7 @@
     const forwardBtn = document.getElementById('forward-btn');
     const reloadBtn = document.getElementById('reload-btn');
     const homeBtn = document.getElementById('home-btn');
-    const config = window.BROWSER_CONFIG;
+    const config = { homepage: 'https://www.google.com', searchEngine: 'https://www.google.com/search?q=' };
 
     let history = [];
     let historyIndex = -1;

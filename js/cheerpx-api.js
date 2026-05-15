@@ -55,7 +55,7 @@ class DragonCheerpXClass {
   }
 
   async startBrowserCode(model = 'gemini') {
-    window.open(`apps/native/ai-coding.html?model=${encodeURIComponent(model)}`, '_blank', 'noopener');
+    window.open(`apps/preinstalled/terminal.html?model=${encodeURIComponent(model)}`, '_blank', 'noopener');
     return { ok: true, model };
   }
 
