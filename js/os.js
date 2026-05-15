@@ -181,9 +181,6 @@ function unlockOS(email) {
 }
 
 // Run instantly when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-});
 
 // --------------------------------------------------------
 // CORE OS INIT
@@ -880,7 +877,8 @@ const savedUrl = safeLSGet('chat_backend_url', null);
 const savedEmail = safeLSGet('os_email', null);
 const runtimeBackendUrl = getConfiguredBackendUrl();
 if (runtimeBackendUrl && !savedUrl) safeLSSet('chat_backend_url', runtimeBackendUrl);
-if (savedUrl || runtimeBackendUrl) document.getElementById('backend-url').value = savedUrl || runtimeBackendUrl;
+const backendUrlInput = document.getElementById('backend-url');
+if ((savedUrl || runtimeBackendUrl) && backendUrlInput) backendUrlInput.value = savedUrl || runtimeBackendUrl;
 if (savedEmail) document.getElementById('login-email').value = savedEmail;
 
 // CheerpX integration functions
