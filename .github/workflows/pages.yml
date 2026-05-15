@@ -1,6 +1,8 @@
-name: Deploy static site to GitHub Pages
+name: Deploy Fireburst to GitHub Pages
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -9,138 +11,55 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  build-scramjet:
-    name: Build Scramjet
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.12.1
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install wasm tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y binaryen
-          rustup target add wasm32-unknown-unknown
-          rustup toolchain install nightly
-          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-          rustup target add wasm32-unknown-unknown --toolchain nightly-x86_64-unknown-linux-gnu
-          cargo install wasm-bindgen-cli --version 0.2.105 --locked
-          cargo install --git https://github.com/r58Playz/wasm-snip.git wasm-snip --locked
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-
-      - name: Clone and build Scramjet
-        run: |
-          set -euo pipefail
-
-          rm -rf .vendor-src/scramjet
-          git clone --depth 1 --recursive https://github.com/MercuryWorkshop/scramjet.git .vendor-src/scramjet
-          cd .vendor-src/scramjet
-
-          export PATH="$HOME/.cargo/bin:$PATH"
-
-          pnpm install --config.unsafe-perm=true
-
-          cd packages/core
-          pnpm run rewriter:build
-          cd ../..
-
-          cd packages/core
-          pnpm run build
-          cd ../..
-
-          echo "=== Built JS files ==="
-          find packages -path "*/dist/*.js" | sort
-          echo "=== Built WASM files ==="
-          find packages -path "*/dist/*.wasm" | sort
-
-      - name: Copy Scramjet artifacts
-        run: |
-          mkdir -p vendor/scramjet
-
-          cp .vendor-src/scramjet/packages/core/dist/scramjet_bundled.js         vendor/scramjet/scramjet_bundled.js
-          cp .vendor-src/scramjet/packages/core/dist/scramjet.wasm               vendor/scramjet/scramjet.wasm
-          cp .vendor-src/scramjet/packages/controller/dist/controller.api.js     vendor/scramjet/controller.api.js
-          cp .vendor-src/scramjet/packages/controller/dist/controller.inject.js  vendor/scramjet/controller.inject.js
-          cp .vendor-src/scramjet/packages/controller/dist/controller.sw.js      vendor/scramjet/controller.sw.js
-
-      - name: Install libcurl-transport
-        run: |
-          mkdir -p vendor-tmp
-          cd vendor-tmp
-          npm install @mercuryworkshop/libcurl-transport
-          
-          LIBCURL=$(find node_modules/@mercuryworkshop/libcurl-transport -name "*.js" -path "*/dist/*" | head -1)
-
-          if [[ -z "$LIBCURL" ]]; then
-            echo "::error::Cannot find libcurl-transport after npm install"
-            find node_modules/@mercuryworkshop -type f -name "*.js" || true
-            exit 1
-          fi
-
-          echo "Using libcurl-transport: $LIBCURL"
-          cp "$LIBCURL" "$GITHUB_WORKSPACE/vendor/scramjet/libcurl-transport.js"
-
-          echo "=== Final vendor/scramjet contents ==="
-          ls -lah "$GITHUB_WORKSPACE/vendor/scramjet/"
-
-      - name: Upload Scramjet artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: scramjet-build
-          path: vendor/scramjet/
-
   deploy:
-    name: Deploy to GitHub Pages
-    needs: [build-scramjet]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Scramjet artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: scramjet-build
-          path: vendor/scramjet/
-
-      - name: Inject runtime backend config
-        env:
-          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      - name: Verify deployment assets
         run: |
-          cat > js/runtime-config.js <<EOF
-          window.RUNTIME_CONFIG = {
-              BACKEND_URL: "${BACKEND_URL}"
-          };
+          set -euo pipefail
+          test -f index.html
+          test -f manifest.json
+          test -f service-worker.js
+
+          # CheerpX runtime and bridge assets required by the COI runner context.
+          test -f vendor/cheerpx/cx.esm.js
+          test -f vendor/cheerpx/cxcore.js
+          test -f vendor/cheerpx/cxbridge.js
+
+          # Emulator libraries must deploy with the main OS (no COI required).
+          test -f js/emulator-manager.js
+          test -f js/os.js
+
+      - name: Create static headers for COI sub-contexts
+        run: |
+          cat > _headers <<'EOF'
+          /apps/preinstalled/terminal.html
+            Cross-Origin-Opener-Policy: same-origin
+            Cross-Origin-Embedder-Policy: require-corp
+
+          /vendor/cheerpx/*
+            Cross-Origin-Resource-Policy: cross-origin
           EOF
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "."
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

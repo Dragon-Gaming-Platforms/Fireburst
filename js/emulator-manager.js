@@ -1,3 +1,4 @@
+// Main OS emulators run in standard context and must not depend on COI/CheerpX isolation.
 class EmulatorManagerClass {
   constructor() {
     this.romExtMap = {

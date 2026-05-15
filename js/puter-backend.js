@@ -10,6 +10,7 @@ class PuterBackend {
         this.puterUrl = 'https://puter.com';
         this.apiUrl = 'https://api.puter.com/v1';
         this.fallbackBackend = null; // Fall back to GAS if Puter fails
+        this.mode = 'unknown';
     }
 
     /**
@@ -19,9 +20,11 @@ class PuterBackend {
     async initialize() {
         try {
             console.log('Initializing Puter backend...');
+            this._initFallbackFromConfig();
 
             // Check if Puter is available in the environment
-            if (typeof puter !== 'undefined' && puter.auth) {
+            if (typeof window.puter !== 'undefined' && window.puter.auth) {
+                this.mode = 'puter';
                 this.isInitialized = true;
                 this.currentUser = await this.getCurrentUser();
                 console.log('✓ Puter backend initialized');
@@ -30,13 +33,17 @@ class PuterBackend {
                 // Puter SDK not available, will need to load or use fallback
                 console.warn('Puter SDK not available, attempting to load...');
                 await this.loadPuterSDK();
+                this.mode = 'puter';
                 this.isInitialized = true;
+                this.currentUser = await this.getCurrentUser();
                 return true;
             }
         } catch (error) {
             console.warn('Puter initialization failed:', error.message);
-            console.log('Falling back to Google Apps Script backend');
+            this._initFallbackFromConfig();
+            if (this.fallbackBackend) console.log('Falling back to Google Apps Script backend');
             this.isInitialized = true; // Still initialized, just using fallback
+            this.mode = 'fallback';
             return true;
         }
     }
@@ -46,13 +53,23 @@ class PuterBackend {
      * @private
      */
     async loadPuterSDK() {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://js.puter.com/v2/puter.js';
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Puter SDK'));
-            document.head.appendChild(script);
-        });
+        const sources = [
+            'https://js.puter.com/v2/',
+            'https://js.puter.com/v2/puter.js',
+            'https://js.puter.com/'
+        ];
+        for (const src of sources) {
+            await new Promise((resolve) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = resolve;
+                document.head.appendChild(script);
+            });
+            if (typeof window.puter !== 'undefined' && window.puter.auth) return true;
+        }
+        throw new Error('Failed to load Puter SDK');
     }
 
     /**
@@ -61,8 +78,8 @@ class PuterBackend {
      */
     async isAuthenticated() {
         try {
-            if (typeof puter !== 'undefined' && puter.auth) {
-                const user = await puter.auth.getUser();
+            if (typeof window.puter !== 'undefined' && window.puter.auth) {
+                const user = await window.puter.auth.getUser();
                 return !!user;
             }
             return false;
@@ -77,14 +94,23 @@ class PuterBackend {
      */
     async getCurrentUser() {
         try {
-            if (typeof puter !== 'undefined' && puter.auth) {
-                return await puter.auth.getUser();
+            if (typeof window.puter !== 'undefined' && window.puter.auth) {
+                return await window.puter.auth.getUser();
             }
             return null;
         } catch (error) {
-            console.warn('Failed to get current user:', error);
+            // Expected when user is not signed in yet (often 401 from Puter API).
+            if (error?.status !== 401) console.warn('Failed to get current user:', error);
             return null;
         }
+    }
+
+    _getPuterAuthMethod(candidates) {
+        if (!window.puter?.auth) return null;
+        for (const name of candidates) {
+            if (typeof window.puter.auth[name] === 'function') return window.puter.auth[name].bind(window.puter.auth);
+        }
+        return null;
     }
 
     /**
@@ -95,19 +121,30 @@ class PuterBackend {
      */
     async authenticate(email, password) {
         try {
-            if (typeof puter !== 'undefined' && puter.auth) {
-                // Puter typically handles auth through UI flow
-                // For backend calls, we'd use the SDK's auth mechanism
-                const result = await puter.auth.login(email, password);
-                this.currentUser = result.user;
-                this.authToken = result.token;
+            if (typeof window.puter !== 'undefined' && window.puter.auth) {
+                const authFn = this._getPuterAuthMethod(['login', 'signIn', 'signin', 'authenticate']);
+                if (!authFn) {
+                    throw new Error('Puter auth API has no supported sign-in method');
+                }
+                const result = await authFn(email, password);
+                const resolvedUser = result?.user || result?.data?.user || (await this.getCurrentUser()) || { email };
+                const resolvedToken = result?.token || result?.data?.token || null;
+                this.currentUser = resolvedUser;
+                this.authToken = resolvedToken;
                 return {
                     success: true,
-                    user: result.user,
-                    token: result.token
+                    user: resolvedUser,
+                    token: resolvedToken
                 };
+            } else if (this.fallbackBackend) {
+                const response = await this._useFallback('login', { email, password });
+                if (!response || response.error || (response.success === false && response.ok !== true)) {
+                    throw new Error(response?.error || 'Fallback login failed');
+                }
+                this.currentUser = response.user || { email };
+                return { success: true, user: this.currentUser, token: response.token || null };
             } else {
-                throw new Error('Puter SDK not available');
+                throw new Error('Puter SDK not available and no fallback backend configured');
             }
         } catch (error) {
             return {
@@ -126,19 +163,31 @@ class PuterBackend {
      */
     async signUp(email, password, username) {
         try {
-            if (typeof puter !== 'undefined' && puter.auth) {
-                const result = await puter.auth.signup(email, password, {
-                    username: username
-                });
-                this.currentUser = result.user;
-                this.authToken = result.token;
+            if (typeof window.puter !== 'undefined' && window.puter.auth) {
+                const signupFn = this._getPuterAuthMethod(['signup', 'signUp', 'register', 'createUser']);
+                if (!signupFn) {
+                    throw new Error('Puter auth API has no supported sign-up method');
+                }
+                const result = await signupFn(email, password, { username: username });
+                const resolvedUser = result?.user || result?.data?.user || (await this.getCurrentUser()) || { email, username };
+                const resolvedToken = result?.token || result?.data?.token || null;
+                this.currentUser = resolvedUser;
+                this.authToken = resolvedToken;
                 return {
                     success: true,
-                    user: result.user,
-                    token: result.token
+                    user: resolvedUser,
+                    token: resolvedToken
                 };
+            } else if (this.fallbackBackend) {
+                // GAS deployments commonly expose `register` rather than `signup`.
+                const response = await this._useFallback('register', { email, password, username });
+                if (!response || response.error || (response.success === false && response.ok !== true)) {
+                    throw new Error(response?.error || 'Fallback signup failed');
+                }
+                this.currentUser = response.user || { email, username };
+                return { success: true, user: this.currentUser, token: response.token || null };
             } else {
-                throw new Error('Puter SDK not available');
+                throw new Error('Puter SDK not available and no fallback backend configured');
             }
         } catch (error) {
             return {
@@ -455,6 +504,13 @@ class PuterBackend {
         this.fallbackBackend = backendUrl;
     }
 
+    _initFallbackFromConfig() {
+        const runtimeBackend = window.RUNTIME_CONFIG?.BACKEND_URL || '';
+        const savedBackend = localStorage.getItem('chat_backend_url') || '';
+        const backend = savedBackend || runtimeBackend;
+        if (backend) this.setFallbackBackend(backend);
+    }
+
     /**
      * Use fallback GAS backend
      * @private
@@ -497,5 +553,6 @@ window.puterBackend = puterBackend;
 
 // Initialize on document ready
 document.addEventListener('DOMContentLoaded', async () => {
+    puterBackend._initFallbackFromConfig();
     await puterBackend.initialize();
 });

@@ -1,13 +1,36 @@
-<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{margin:0;background:#111;color:#ddd;font-family:monospace}.out{height:90vh;overflow:auto;padding:10px;white-space:pre-wrap}.bar{display:flex;padding:8px;background:#1d1d1d}input{flex:1;background:#000;color:#0f0;border:1px solid #333;padding:8px}</style></head>
-<body><div class='out' id='out'>Fireburst CheerpX terminal\nType commands (ls, git clone, browsercode, wine app.exe).\n</div><div class='bar'><input id='cmd' placeholder='Enter command'></div>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='UTF-8'>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+  <!--
+    CheerpX terminal architecture notes:
+    - This UI is part of the main OS shell experience.
+    - Commands are executed by DragonCheerpX via a separate COI-enabled runner context.
+    - Native GUI apps should launch in NEW windows/tabs in that isolated context.
+    - Main OS apps/emulators continue working without COI requirements.
+  -->
+  <style>
+    body{margin:0;background:#111;color:#ddd;font-family:monospace}
+    .out{height:90vh;overflow:auto;padding:10px;white-space:pre-wrap}
+    .bar{display:flex;padding:8px;background:#1d1d1d}
+    input{flex:1;background:#000;color:#0f0;border:1px solid #333;padding:8px}
+  </style>
+</head>
+<body>
+  <div class='out' id='out'>Fireburst CheerpX terminal
+Type commands (ls, git clone, browsercode, wine app.exe).
+GUI/native apps open in new windows/tabs with isolated COI context.
+  </div>
+  <div class='bar'><input id='cmd' placeholder='Enter command'></div>
 <script>
 const out=document.getElementById('out'), input=document.getElementById('cmd');
 function log(t){out.textContent += `\n$ ${t}`; out.scrollTop=out.scrollHeight;}
 input.addEventListener('keydown', async (e)=>{if(e.key!=='Enter') return; const c=input.value.trim(); if(!c) return; log(c); input.value='';
 try{
-if(c==='browsercode'){await window.parent.DragonCheerpX.startBrowserCode('gemini'); out.textContent+='\nLaunching BrowserCode...'; return;}
+if(c==='browsercode'){await window.parent.DragonCheerpX.startBrowserCode('gemini'); out.textContent+='\nLaunching BrowserCode in a new isolated tab...'; return;}
 if(c.startsWith('wine ')){const r=await window.parent.DragonCheerpX.runWine(c.slice(5)); out.textContent += `\n${r.stdout||''}${r.stderr||''}`; return;}
-if(c.startsWith('gui ')){await window.parent.DragonCheerpX.runGUI(c.slice(4)); out.textContent+='\nLaunching GUI app...'; return;}
+if(c.startsWith('gui ')){await window.parent.DragonCheerpX.runGUI(c.slice(4)); out.textContent+='\nLaunching GUI app in new window/tab...'; return;}
 const r=await window.parent.DragonCheerpX.execute(c); out.textContent += `\n${r.stdout||''}${r.stderr||''}`;
 }catch(err){out.textContent += `\nError: ${err.message}`;}
 out.scrollTop=out.scrollHeight;
