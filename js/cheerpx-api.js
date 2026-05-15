@@ -1,3 +1,14 @@
+/**
+ * Fireburst CheerpX integration architecture
+ * -----------------------------------------
+ * - Main OS (desktop, games, browser tools, emulator manager) runs in the normal app context.
+ *   It does NOT require COI and must remain unaffected by CheerpX constraints.
+ * - CheerpX command execution is delegated through window.cheerpxBridge to a separate
+ *   COI-enabled runner context.
+ * - Native GUI apps (ELF binaries, Wine apps, etc.) are launched by that runner and should
+ *   open in dedicated tabs/windows configured for COI.
+ * - File sync uses the bridge boundary to copy data between the main VFS and CheerpX runtime.
+ */
 class DragonCheerpXClass {
   constructor() {
     this.ready = false;
@@ -9,6 +20,7 @@ class DragonCheerpXClass {
     if (!this.bridge && window.cheerpxBridge) this.bridge = window.cheerpxBridge;
     if (!this.bridge) throw new Error('CheerpX bridge unavailable');
     if (!this.bridge.isConnected) {
+      // Opens/attaches to separate COI-enabled execution environment.
       const connected = await this.bridge.open({ width: 1100, height: 760 });
       if (!connected) throw new Error('Unable to connect to CheerpX runner (COI context).');
     }
@@ -27,6 +39,7 @@ class DragonCheerpXClass {
 
   async runGUI(executable) {
     await this.init();
+    // GUI workloads are expected to launch in a new COI-enabled window/tab.
     const response = await this.bridge.runNativeApp(executable, []);
     return { ok: response.success !== false, stdout: `Launched ${executable}\n`, stderr: response.error || '' };
   }
@@ -55,6 +68,7 @@ class DragonCheerpXClass {
   }
 
   async startBrowserCode(model = 'gemini') {
+    // BrowserCode runs in separate terminal surface and should remain isolated from main OS.
     window.open(`apps/preinstalled/terminal.html?model=${encodeURIComponent(model)}`, '_blank', 'noopener');
     return { ok: true, model };
   }
