@@ -5,7 +5,7 @@
         "path": "apps/preinstalled/file-explorer.html",
         "category": "System",
         "preinstalled": true,
-        "icon": "📂"
+        "icon": "\ud83d\udcc2"
     },
     {
         "id": "html-editor",
@@ -27,7 +27,7 @@
         "path": "apps/native/vscode.html",
         "category": "Native",
         "preinstalled": false,
-        "icon": "💻"
+        "icon": "\ud83d\udcbb"
     },
     {
         "id": "terminal-native",
@@ -35,7 +35,7 @@
         "path": "apps/native/terminal-native.html",
         "category": "Native",
         "preinstalled": false,
-        "icon": "🖥️"
+        "icon": "\ud83d\udda5\ufe0f"
     },
     {
         "id": "file-manager-linux",
@@ -43,7 +43,7 @@
         "path": "apps/native/file-manager-linux.html",
         "category": "Native",
         "preinstalled": false,
-        "icon": "📁"
+        "icon": "\ud83d\udcc1"
     },
     {
         "id": "wine-launcher",
@@ -51,7 +51,7 @@
         "path": "apps/native/wine-launcher.html",
         "category": "Native",
         "preinstalled": false,
-        "icon": "🍷"
+        "icon": "\ud83c\udf77"
     },
     {
         "id": "ai-coding",
@@ -59,7 +59,7 @@
         "path": "apps/native/ai-coding.html",
         "category": "AI",
         "preinstalled": false,
-        "icon": "🤖"
+        "icon": "\ud83e\udd16"
     },
     {
         "id": "scramjet-browser",
@@ -67,7 +67,7 @@
         "path": "apps/proxy/scramjet-browser.html",
         "category": "Proxy",
         "preinstalled": false,
-        "icon": "🌐"
+        "icon": "\ud83c\udf10"
     },
     {
         "id": "fireburst-browser",
@@ -75,7 +75,79 @@
         "path": "apps/browsers/Browser.html",
         "category": "Browser",
         "preinstalled": true,
-        "icon": "🔗",
+        "icon": "\ud83d\udd17",
         "description": "Simple iframe-based web browser with configurable settings"
+    },
+    {
+        "id": "github-dashboard",
+        "name": "GitHub Dashboard",
+        "path": "apps/preinstalled/github-dashboard.html",
+        "category": "Developer Tools",
+        "preinstalled": true,
+        "icon": "\ud83d\udc19"
+    },
+    {
+        "id": "git-client",
+        "name": "Git Client",
+        "path": "apps/preinstalled/git-client.html",
+        "category": "Developer Tools",
+        "preinstalled": true,
+        "icon": "\ud83c\udf3f"
+    },
+    {
+        "id": "nes-emulator",
+        "name": "NES Emulator",
+        "path": "apps/preinstalled/nes-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "snes-emulator",
+        "name": "SNES Emulator",
+        "path": "apps/preinstalled/snes-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "gameboy-emulator",
+        "name": "GAMEBOY Emulator",
+        "path": "apps/preinstalled/gameboy-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "gba-emulator",
+        "name": "GBA Emulator",
+        "path": "apps/preinstalled/gba-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "nds-emulator",
+        "name": "NDS Emulator",
+        "path": "apps/preinstalled/nds-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "psx-emulator",
+        "name": "PSX Emulator",
+        "path": "apps/preinstalled/psx-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
+    },
+    {
+        "id": "genesis-emulator",
+        "name": "GENESIS Emulator",
+        "path": "apps/preinstalled/genesis-emulator.html",
+        "category": "Gaming",
+        "preinstalled": true,
+        "icon": "\ud83c\udfae"
     }
 ]

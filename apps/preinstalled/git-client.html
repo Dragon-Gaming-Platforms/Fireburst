@@ -1,0 +1,8 @@
+<!DOCTYPE html><html><body style='font-family:Segoe UI;background:#151515;color:#eee;padding:16px'>
+<h2>Git Client</h2>
+<input id='msg' placeholder='Commit message'><button onclick='commit()'>Commit</button><button onclick='push()'>Push</button><pre id='out'></pre>
+<script>
+const out=document.getElementById('out');
+async function commit(){out.textContent=JSON.stringify(await window.parent.GitHubManager.commitChanges(document.getElementById('msg').value||'Update'),null,2)}
+async function push(){out.textContent=JSON.stringify(await window.parent.GitHubManager.pushChanges(),null,2)}
+</script></body></html>

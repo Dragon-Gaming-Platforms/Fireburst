@@ -1,0 +1,7 @@
+<!DOCTYPE html><html><body style='font-family:Segoe UI;background:#151515;color:#eee;padding:16px'>
+<h2>GitHub Dashboard</h2><button onclick='connect()'>Connect GitHub</button><button onclick='repos()'>List Repos</button><pre id='out'></pre>
+<script>
+async function connect(){const r=await window.parent.GitHubManager.authenticate();out.textContent=JSON.stringify(r,null,2)}
+async function repos(){const r=await window.parent.GitHubManager.listRepos();out.textContent=JSON.stringify(r.slice(0,20),null,2)}
+const out=document.getElementById('out');
+</script></body></html>

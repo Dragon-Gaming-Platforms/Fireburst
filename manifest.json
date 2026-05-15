@@ -1,0 +1,9 @@
+{
+  "name": "Fireburst OS",
+  "short_name": "Fireburst",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#0078D4",
+  "description": "Installable web-based OS with terminal, GitHub, and emulator support."
+}

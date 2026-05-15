@@ -144,8 +144,13 @@ class CheerpXBridge {
      * @returns {Promise<Object>}
      */
     async uploadFile(file, remotePath = '/tmp/') {
+        const buffer = await file.arrayBuffer();
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const payload = btoa(binary);
         return this.execute('uploadFile', {
-            file: file,
+            file: { data: payload, type: file.type || 'application/octet-stream' },
             filename: file.name,
             remotePath: remotePath
         });
@@ -291,3 +296,5 @@ cheerpxBridge._initializeMessageListener();
 
 // Expose globally for OS integration
 window.CheerpXBridge = CheerpXBridge;
+
+window.cheerpxBridge = cheerpxBridge;

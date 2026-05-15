@@ -907,3 +907,19 @@ async function runWithWine(file) {
         window.osAlert('Wine Error', `Failed to run Windows executable: ${error.message}`);
     }
 }
+
+async function initPWA() {
+    if ('serviceWorker' in navigator) {
+        try {
+            const reg = await navigator.serviceWorker.register('service-worker.js');
+            if (reg.waiting) showNotification('Update Ready', 'Refresh to apply latest Fireburst version.');
+        } catch (e) {
+            console.warn('Service worker registration failed', e);
+        }
+    }
+
+    window.addEventListener('online', () => showNotification('Connection Restored', 'You are back online.'));
+    window.addEventListener('offline', () => showNotification('Offline Mode', 'Running with cached files until connection returns.'));
+}
+
+document.addEventListener('DOMContentLoaded', initPWA);

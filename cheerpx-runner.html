@@ -205,7 +205,7 @@
 
                 // Import CheerpX from vendor directory
                 const CheerpXModule = await import('./vendor/cheerpx/cx.esm.js');
-                const CheerpX = CheerpXModule.default;
+                const CheerpX = CheerpXModule.default || CheerpXModule;
                 
                 log("CheerpX module loaded");
 
@@ -225,8 +225,21 @@
                 let webDevice = await CheerpX.WebDevice.create();
                 let dataDevice = await CheerpX.WebDevice.create();
 
-                // Initialize Linux instance
-                cheerpxInstance = await CheerpX.Linux.create({
+                // Initialize Linux instance (support both modern and legacy constructors)
+                if (typeof CheerpX.CheerpXLinuxCreate === 'function') {
+                    cheerpxInstance = await CheerpX.CheerpXLinuxCreate({
+                        mounts: [
+                            { type: "ext2", path: "/", dev: overlayDevice },
+                            { type: "dir", path: "/app", dev: webDevice },
+                            { type: "dir", path: "/data", dev: dataDevice },
+                            { type: "devs", path: "/dev" },
+                            { type: "devpts", path: "/dev/pts" },
+                            { type: "proc", path: "/proc" },
+                            { type: "tmp", path: "/tmp" }
+                        ]
+                    });
+                } else {
+                    cheerpxInstance = await CheerpX.Linux.create({
                     mounts: [
                         { type: "ext2", path: "/", dev: overlayDevice },
                         { type: "dir", path: "/app", dev: webDevice },
@@ -236,7 +249,8 @@
                         { type: "proc", path: "/proc" },
                         { type: "tmp", path: "/tmp" },
                     ],
-                });
+                    });
+                }
 
                 log("CheerpX Linux instance created successfully");
                 
@@ -406,9 +420,11 @@
                         break;
                         
                     case "execute":
-                        if (message.command) {
-                            document.getElementById("command-input").value = message.command;
-                            await executeCommand();
+                        if (message.data?.command) {
+                            const result = await runShellCommand(message.data.command);
+                            notifyParent("response", { id: message.id, action: "execute", success: true, result });
+                        } else {
+                            notifyParent("response", { id: message.id, action: "execute", success: false, error: "Missing command" });
                         }
                         break;
 
@@ -430,13 +446,28 @@
             }
         });
 
+
+        async function runShellCommand(command) {
+            log(`$ ${command}`);
+            const args = ["-lc", command];
+            const path = "/bin/bash";
+            await runCommand(path, args);
+            return { stdout: `Executed: ${command}\n`, stderr: "" };
+        }
+
         // Handle file upload
         async function handleFileUpload(file, filename) {
             try {
                 log(`Uploading file: ${filename}`);
-                // Implementation depends on CheerpX WebDevice API
-                log(`✓ File uploaded: ${filename}`);
-                notifyParent("fileUploaded", { filename, success: true });
+                const data = file && file.data ? Uint8Array.from(atob(file.data), c => c.charCodeAt(0)) : null;
+                if (!data) throw new Error('Invalid file payload');
+                if (cheerpxInstance.writeFile) {
+                    await cheerpxInstance.writeFile(`/data/${filename}`, data);
+                } else {
+                    await runCommand('/bin/bash', ['-lc', `cat > /data/${filename} <<'EOF'\n${atob(file.data)}\nEOF`]);
+                }
+                log(`✓ File uploaded: /data/${filename}`);
+                notifyParent("fileUploaded", { filename, remotePath: `/data/${filename}`, success: true });
             } catch (error) {
                 log(`❌ Upload failed: ${error.message}`, "error");
                 notifyParent("fileUploaded", { filename, success: false, error: error.message });
