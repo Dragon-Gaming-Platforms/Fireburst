@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width,initial-scale=1'>
+    <title>NES Emulator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #emulator-container {
+            width: 100%;
+            height: calc(100vh - 60px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #emulator-canvas {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            background: #0078D4;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #005A9E;
+        }
+        .info {
+            color: #aaa;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="emulator-container">
+        <div class="controls">
+            <button onclick="loadROM()">Load ROM</button>
+            <button onclick="resetEmulator()">Reset</button>
+            <span class="info" id="rom-info">No ROM loaded</span>
+        </div>
+        <canvas id="emulator-canvas"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsnes@2.0.0/dist/jsnes.min.js"></script>
+    <script>
+        let nes = null;
+        let running = false;
+        const canvas = document.getElementById('emulator-canvas');
+        const ctx = canvas.getContext('2d');
+        let romData = null;
+
+        // Set canvas size
+        function resizeCanvas() {
+            const container = document.getElementById('emulator-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight - 60;
+        }
+
+        function initEmulator() {
+            try {
+                nes = new window.JSNES({
+                    onFrame: function(imageData) {
+                        ctx.putImageData(imageData, 0, 0);
+                    }
+                });
+                running = true;
+            } catch (e) {
+                console.error('Failed to init emulator:', e);
+            }
+        }
+
+        function loadROM() {
+            try {
+                const romSession = sessionStorage.getItem('rom_data');
+                if (romSession) {
+                    const data = JSON.parse(romSession);
+                    romData = data.content;
+                    loadROMData(romData, data.name);
+                    return;
+                }
+
+                // Fallback: file input
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.nes';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        loadROMData(event.target.result, file.name);
+                    };
+                    reader.readAsArrayBuffer(file);
+                };
+                input.click();
+            } catch (e) {
+                alert('Error loading ROM: ' + e.message);
+            }
+        }
+
+        function loadROMData(data, name) {
+            try {
+                if (!nes) initEmulator();
+                
+                // Convert to Uint8Array if needed
+                const romBuffer = data instanceof Uint8Array ? data : new Uint8Array(data);
+                nes.loadROM(romBuffer);
+                
+                document.getElementById('rom-info').textContent = `Loaded: ${name}`;
+                running = true;
+                gameLoop();
+            } catch (e) {
+                alert('Error loading ROM: ' + e.message);
+            }
+        }
+
+        function resetEmulator() {
+            if (nes) {
+                nes.reset();
+            }
+        }
+
+        function gameLoop() {
+            if (running && nes) {
+                nes.frame();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Keyboard controls
+        const keyMap = {
+            'ArrowUp': 'up',
+            'ArrowDown': 'down',
+            'ArrowLeft': 'left',
+            'ArrowRight': 'right',
+            'z': 'a',
+            'x': 'b',
+            'Enter': 'start',
+            'Shift': 'select'
+        };
+
+        document.addEventListener('keydown', (e) => {
+            const button = keyMap[e.key];
+            if (button && nes) {
+                nes.buttonDown(1, button);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const button = keyMap[e.key];
+            if (button && nes) {
+                nes.buttonUp(1, button);
+            }
+        });
+
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        initEmulator();
+        loadROM();
+    </script>
+</body>
+</html>
