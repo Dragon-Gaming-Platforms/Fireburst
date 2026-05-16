@@ -7,7 +7,7 @@
 ---
 
 > [!CAUTION]
-> NOTICE: This repository is *purely* __Experimental__ in nature and should not be used commercially!
+> DISCLAIMER: This repository is *purely* __Experimental__ in nature and should not be used commercially!
 
 ## Features
 
