@@ -5,7 +5,64 @@
         "path": "apps/preinstalled/file-explorer.html",
         "category": "System",
         "preinstalled": true,
-        "icon": "\ud83d\udcc2"
+        "icon": "📂"
+    },
+    {
+        "id": "terminal",
+        "name": "Terminal",
+        "path": "apps/preinstalled/terminal.html",
+        "category": "System",
+        "preinstalled": true,
+        "icon": "⌨️"
+    },
+    {
+        "id": "task-manager",
+        "name": "Task Manager",
+        "path": "apps/preinstalled/task-manager.html",
+        "category": "System",
+        "preinstalled": true,
+        "icon": "📊"
+    },
+    {
+        "id": "settings",
+        "name": "Settings",
+        "path": "apps/preinstalled/settings.html",
+        "category": "System",
+        "preinstalled": true,
+        "icon": "⚙️"
+    },
+    {
+        "id": "updates",
+        "name": "Updates",
+        "path": "apps/preinstalled/updates.html",
+        "category": "System",
+        "preinstalled": true,
+        "icon": "📢"
+    },
+    {
+        "id": "fireburst-browser",
+        "name": "Fireburst Browser",
+        "path": "apps/browsers/Browser.html",
+        "category": "Browser",
+        "preinstalled": true,
+        "icon": "🔗",
+        "description": "Simple iframe-based web browser with configurable settings"
+    },
+    {
+        "id": "github-dashboard",
+        "name": "GitHub Dashboard",
+        "path": "apps/preinstalled/github-dashboard.html",
+        "category": "Developer Tools",
+        "preinstalled": true,
+        "icon": "🐙"
+    },
+    {
+        "id": "git-client",
+        "name": "Git Client",
+        "path": "apps/preinstalled/git-client.html",
+        "category": "Developer Tools",
+        "preinstalled": true,
+        "icon": "🌿"
     },
     {
         "id": "html-editor",
@@ -20,86 +77,5 @@
         "path": "apps/store/github-importer.html",
         "category": "Developer Tools",
         "preinstalled": false
-    },
-    {
-        "id": "fireburst-browser",
-        "name": "Fireburst Browser",
-        "path": "apps/browsers/Browser.html",
-        "category": "Browser",
-        "preinstalled": true,
-        "icon": "\ud83d\udd17",
-        "description": "Simple iframe-based web browser with configurable settings"
-    },
-    {
-        "id": "github-dashboard",
-        "name": "GitHub Dashboard",
-        "path": "apps/preinstalled/github-dashboard.html",
-        "category": "Developer Tools",
-        "preinstalled": true,
-        "icon": "\ud83d\udc19"
-    },
-    {
-        "id": "git-client",
-        "name": "Git Client",
-        "path": "apps/preinstalled/git-client.html",
-        "category": "Developer Tools",
-        "preinstalled": true,
-        "icon": "\ud83c\udf3f"
-    },
-    {
-        "id": "nes-emulator",
-        "name": "NES Emulator",
-        "path": "apps/preinstalled/nes-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "snes-emulator",
-        "name": "SNES Emulator",
-        "path": "apps/preinstalled/snes-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "gameboy-emulator",
-        "name": "GAMEBOY Emulator",
-        "path": "apps/preinstalled/gameboy-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "gba-emulator",
-        "name": "GBA Emulator",
-        "path": "apps/preinstalled/gba-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "nds-emulator",
-        "name": "NDS Emulator",
-        "path": "apps/preinstalled/nds-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "psx-emulator",
-        "name": "PSX Emulator",
-        "path": "apps/preinstalled/psx-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
-    },
-    {
-        "id": "genesis-emulator",
-        "name": "GENESIS Emulator",
-        "path": "apps/preinstalled/genesis-emulator.html",
-        "category": "Gaming",
-        "preinstalled": true,
-        "icon": "\ud83c\udfae"
     }
 ]
