@@ -3,36 +3,344 @@
 <head>
   <meta charset='UTF-8'>
   <meta name='viewport' content='width=device-width,initial-scale=1'>
-  <!--
-    CheerpX terminal architecture notes:
-    - This UI is part of the main OS shell experience.
-    - Commands are executed by DragonCheerpX via a separate COI-enabled runner context.
-    - Native GUI apps should launch in NEW windows/tabs in that isolated context.
-    - Main OS apps/emulators continue working without COI requirements.
-  -->
+  <title>Fireburst Terminal</title>
   <style>
-    body{margin:0;background:#111;color:#ddd;font-family:monospace}
-    .out{height:90vh;overflow:auto;padding:10px;white-space:pre-wrap}
-    .bar{display:flex;padding:8px;background:#1d1d1d}
-    input{flex:1;background:#000;color:#0f0;border:1px solid #333;padding:8px}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      height: 100%;
+      background: #0c0c0c;
+      color: #0dff00;
+      font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      overflow: hidden;
+    }
+    
+    #terminal-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+    }
+    
+    #terminal-output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #0c0c0c;
+      color: #0dff00;
+      text-shadow: 0 0 10px rgba(13, 255, 0, 0.3);
+    }
+    
+    #terminal-output::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    #terminal-output::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+    
+    #terminal-output::-webkit-scrollbar-thumb {
+      background: #0dff00;
+      border-radius: 4px;
+    }
+    
+    #terminal-output::-webkit-scrollbar-thumb:hover {
+      background: #00ff00;
+    }
+    
+    .terminal-line {
+      margin-bottom: 4px;
+    }
+    
+    .terminal-input-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    
+    .terminal-prompt {
+      color: #0dff00;
+      font-weight: bold;
+      min-width: 32px;
+    }
+    
+    .terminal-command {
+      color: #0dff00;
+      flex: 1;
+      word-break: break-all;
+    }
+    
+    .terminal-output-line {
+      color: #00ff00;
+      margin-bottom: 2px;
+    }
+    
+    .terminal-error {
+      color: #ff4444;
+      margin-bottom: 2px;
+    }
+    
+    .terminal-status {
+      color: #ffaa00;
+      margin-bottom: 2px;
+      font-style: italic;
+    }
+    
+    #terminal-input-bar {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    
+    #terminal-prompt-display {
+      color: #0dff00;
+      font-weight: bold;
+      min-width: 32px;
+    }
+    
+    #terminal-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #0dff00;
+      font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      outline: none;
+      caret-color: #0dff00;
+    }
+    
+    #terminal-input::selection {
+      background: #0dff00;
+      color: #0c0c0c;
+    }
   </style>
 </head>
 <body>
-  <div class='out' id='out'>Fireburst CheerpX terminal
-Type commands (ls, git clone, browsercode, wine app.exe).
-GUI/native apps open in new windows/tabs with isolated COI context.
+  <div id="terminal-container">
+    <div id="terminal-output">
+<span class="terminal-line">Fireburst CheerpX Terminal</span>
+<span class="terminal-line">Type 'help' for available commands</span>
+<span class="terminal-line"></span>
+    </div>
+    <div id="terminal-input-bar">
+      <span id="terminal-prompt-display">$</span>
+      <input type="text" id="terminal-input" placeholder="Enter command..." autocomplete="off" spellcheck="false">
+    </div>
   </div>
-  <div class='bar'><input id='cmd' placeholder='Enter command'></div>
-<script>
-const out=document.getElementById('out'), input=document.getElementById('cmd');
-function log(t){out.textContent += `\n$ ${t}`; out.scrollTop=out.scrollHeight;}
-input.addEventListener('keydown', async (e)=>{if(e.key!=='Enter') return; const c=input.value.trim(); if(!c) return; log(c); input.value='';
-try{
-if(c==='browsercode'){await window.parent.DragonCheerpX.startBrowserCode('gemini'); out.textContent+='\nLaunching BrowserCode in a new isolated tab...'; return;}
-if(c.startsWith('wine ')){const r=await window.parent.DragonCheerpX.runWine(c.slice(5)); out.textContent += `\n${r.stdout||''}${r.stderr||''}`; return;}
-if(c.startsWith('gui ')){await window.parent.DragonCheerpX.runGUI(c.slice(4)); out.textContent+='\nLaunching GUI app in new window/tab...'; return;}
-const r=await window.parent.DragonCheerpX.execute(c); out.textContent += `\n${r.stdout||''}${r.stderr||''}`;
-}catch(err){out.textContent += `\nError: ${err.message}`;}
-out.scrollTop=out.scrollHeight;
-});
-</script></body></html>
+
+  <script>
+    const output = document.getElementById('terminal-output');
+    const inputBar = document.getElementById('terminal-input');
+    
+    let commandHistory = [];
+    let historyIndex = -1;
+    let isProcessing = false;
+    
+    // Try to access CheerpX API from parent window
+    const getCheerpXAPI = () => {
+      try {
+        if (window.parent && window.parent.DragonCheerpX) {
+          return window.parent.DragonCheerpX;
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    };
+    
+    // Add output line with proper formatting
+    function addOutputLine(text, type = 'output') {
+      const line = document.createElement('span');
+      line.className = 'terminal-line';
+      
+      if (type === 'command') {
+        line.className += ' terminal-input-line';
+        line.innerHTML = `<span class="terminal-prompt">$</span><span class="terminal-command">${escapeHtml(text)}</span>`;
+      } else if (type === 'error') {
+        line.className += ' terminal-error';
+        line.textContent = text;
+      } else if (type === 'status') {
+        line.className += ' terminal-status';
+        line.textContent = text;
+      } else {
+        line.className += ' terminal-output-line';
+        line.textContent = text;
+      }
+      
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Built-in commands
+    const builtInCommands = {
+      help: () => {
+        addOutputLine('Available commands:', 'status');
+        addOutputLine('  help              - Show this help message');
+        addOutputLine('  clear             - Clear the terminal');
+        addOutputLine('  pwd               - Print working directory');
+        addOutputLine('  whoami            - Display current user');
+        addOutputLine('  date              - Show current date and time');
+        addOutputLine('  echo <text>       - Echo text');
+        addOutputLine('  browsercode       - Launch BrowserCode AI in isolated tab');
+        addOutputLine('  wine <exe>        - Run Windows executable');
+        addOutputLine('  gui <app>         - Launch GUI application');
+        addOutputLine('  <any command>     - Execute via CheerpX bridge');
+      },
+      clear: () => {
+        output.innerHTML = '';
+      },
+      pwd: () => {
+        addOutputLine('/home/user');
+      },
+      whoami: () => {
+        addOutputLine(window.parent?.currentUser || 'guest');
+      },
+      date: () => {
+        addOutputLine(new Date().toString());
+      },
+      echo: (args) => {
+        addOutputLine(args.join(' '));
+      }
+    };
+    
+    // Execute command
+    async function executeCommand(cmdString) {
+      if (!cmdString.trim()) return;
+      
+      isProcessing = true;
+      inputBar.disabled = true;
+      
+      // Add command to history and display
+      commandHistory.push(cmdString);
+      historyIndex = -1;
+      addOutputLine(cmdString, 'command');
+      
+      try {
+        const parts = cmdString.trim().split(/\s+/);
+        const command = parts[0].toLowerCase();
+        const args = parts.slice(1);
+        
+        // Check for built-in commands first
+        if (command in builtInCommands) {
+          const result = builtInCommands[command](args);
+          if (result instanceof Promise) {
+            await result;
+          }
+        } else if (command === 'browsercode') {
+          const cheerpx = getCheerpXAPI();
+          if (cheerpx) {
+            addOutputLine('Launching BrowserCode in isolated tab...', 'status');
+            await cheerpx.startBrowserCode('gemini');
+          } else {
+            addOutputLine('Error: CheerpX API not available', 'error');
+          }
+        } else if (command === 'wine') {
+          const cheerpx = getCheerpXAPI();
+          if (!cheerpx) {
+            addOutputLine('Error: CheerpX API not available', 'error');
+          } else if (args.length === 0) {
+            addOutputLine('Error: wine requires an executable path', 'error');
+          } else {
+            try {
+              addOutputLine(`Executing: wine ${args.join(' ')}`, 'status');
+              const result = await cheerpx.runWine(args[0]);
+              if (result.stdout) addOutputLine(result.stdout);
+              if (result.stderr) addOutputLine(result.stderr, 'error');
+            } catch (err) {
+              addOutputLine(`Error: ${err.message}`, 'error');
+            }
+          }
+        } else if (command === 'gui') {
+          const cheerpx = getCheerpXAPI();
+          if (!cheerpx) {
+            addOutputLine('Error: CheerpX API not available', 'error');
+          } else if (args.length === 0) {
+            addOutputLine('Error: gui requires an executable path', 'error');
+          } else {
+            try {
+              addOutputLine(`Launching GUI: ${args[0]}`, 'status');
+              await cheerpx.runGUI(args[0]);
+            } catch (err) {
+              addOutputLine(`Error: ${err.message}`, 'error');
+            }
+          }
+        } else {
+          // Execute via CheerpX bridge for any other command
+          const cheerpx = getCheerpXAPI();
+          if (!cheerpx) {
+            addOutputLine('Error: CheerpX bridge unavailable', 'error');
+          } else {
+            try {
+              const result = await cheerpx.execute(cmdString);
+              if (result.stdout) {
+                const lines = result.stdout.split('\n').filter(l => l);
+                lines.forEach(line => addOutputLine(line));
+              }
+              if (result.stderr) {
+                const lines = result.stderr.split('\n').filter(l => l);
+                lines.forEach(line => addOutputLine(line, 'error'));
+              }
+            } catch (err) {
+              addOutputLine(`Error: ${err.message}`, 'error');
+            }
+          }
+        }
+      } catch (err) {
+        addOutputLine(`Error: ${err.message}`, 'error');
+      } finally {
+        isProcessing = false;
+        inputBar.disabled = false;
+        inputBar.focus();
+      }
+    }
+    
+    // Event listeners
+    inputBar.addEventListener('keydown', async (e) => {
+      if (isProcessing) return;
+      
+      if (e.key === 'Enter') {
+        const command = inputBar.value;
+        inputBar.value = '';
+        await executeCommand(command);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          inputBar.value = commandHistory[commandHistory.length - 1 - historyIndex];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          historyIndex--;
+          inputBar.value = commandHistory[commandHistory.length - 1 - historyIndex];
+        } else if (historyIndex === 0) {
+          historyIndex = -1;
+          inputBar.value = '';
+        }
+      }
+    });
+    
+    // Focus input on load
+    inputBar.focus();
+  </script>
+</body>
+</html>
