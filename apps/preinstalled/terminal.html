@@ -190,6 +190,15 @@
       return div.innerHTML;
     }
     
+
+    function normalizeTerminalCommand(rawInput) {
+      const parts = rawInput.trim().split(/\s+/);
+      if (parts.length > 1 && parts[0].toLowerCase() === 'terminal') {
+        return parts.slice(1).join(' ');
+      }
+      return rawInput;
+    }
+
     // Built-in commands
     const builtInCommands = {
       help: () => {
@@ -235,7 +244,8 @@
       addOutputLine(cmdString, 'command');
       
       try {
-        const parts = cmdString.trim().split(/\s+/);
+        const normalizedInput = normalizeTerminalCommand(cmdString);
+        const parts = normalizedInput.trim().split(/\s+/);
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
         
