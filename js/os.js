@@ -64,10 +64,11 @@ function loadWindowState() {
     }
 }
 // --------------------------------------------------------
-// GLOBAL AUTH SYSTEM (Puter.js Integration)
+// GLOBAL AUTH SYSTEM (Google Apps Script + Puter.js)
 // --------------------------------------------------------
 let isLoginMode = true;
 let puterAuthInitialized = false;
+let currentAuthBackend = 'gapps'; // 'gapps' or 'puter'
 
 function toggleAuthMode() {
     isLoginMode = !isLoginMode;
@@ -75,6 +76,7 @@ function toggleAuthMode() {
     document.getElementById('auth-btn').innerText = isLoginMode ? "Unlock" : "Sign Up";
     document.getElementById('auth-toggle').innerText = isLoginMode ? "Need an account? Sign up here" : "Already have an account? Login here";
     document.getElementById('login-error').style.display = 'none';
+    currentAuthBackend = 'gapps'; // Reset to Google Apps Script
 }
 
 function showAuthError(msg) {
@@ -83,9 +85,16 @@ function showAuthError(msg) {
     err.style.display = 'block';
 }
 
-// CHECK AUTH - Check if already authenticated with Puter
+// CHECK AUTH - Check if already authenticated
 async function checkAuth() {
     try {
+        // Check for guest account in localStorage
+        const guestUser = safeLSGet('guest_account_user', null);
+        if (guestUser) {
+            unlockOS(guestUser, true); // true = guest mode
+            return;
+        }
+
         // Check if Puter backend is initialized
         if (!window.puterBackend) {
             console.warn('Puter backend not loaded');
@@ -104,13 +113,13 @@ async function checkAuth() {
             throw new Error('Puter backend failed to initialize');
         }
 
-        // Check if user is already authenticated
+        // Check if user is already authenticated with Puter
         const isAuthenticated = await window.puterBackend.isAuthenticated();
         
         if (isAuthenticated) {
             const user = await window.puterBackend.getCurrentUser();
             safeLSSet('os_email', user.email);
-            unlockOS(user.email);
+            unlockOS(user.email, false);
         } else {
             document.getElementById('lock-screen').classList.remove('hidden');
         }
@@ -133,13 +142,20 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
 });
 
-// SUBMIT AUTH - Authenticate with Puter.js
+// SUBMIT AUTH - Authenticate with Google Apps Script (default)
 async function submitAuth() {
     const email = document.getElementById('login-email').value.toLowerCase().trim();
     const pass = document.getElementById('login-pass').value.trim();
     const btn = document.getElementById('auth-btn');
     
     if (!email || !pass) return showAuthError("Please enter email and password.");
+    
+    // Guest account bypass
+    if (email === 'guest' && pass === 'guest') {
+        safeLSSet('guest_account_user', 'guest');
+        unlockOS('guest', true);
+        return;
+    }
     
     btn.innerText = isLoginMode ? "Unlocking..." : "Creating Account...";
     document.getElementById('login-error').style.display = 'none';
@@ -148,17 +164,17 @@ async function submitAuth() {
         let result;
         
         if (isLoginMode) {
-            // Login
-            result = await window.puterBackend.authenticate(email, pass);
+            // Login with Google Apps Script
+            result = await authenticateWithGApps(email, pass);
         } else {
-            // Sign up
+            // Sign up with Google Apps Script
             const username = email.split('@')[0];
-            result = await window.puterBackend.signUp(email, pass, username);
+            result = await signUpWithGApps(email, pass, username);
         }
 
         if (result.success) {
             safeLSSet('os_email', email);
-            unlockOS(email);
+            unlockOS(email, false);
         } else {
             showAuthError(result.error || "Authentication Failed");
             btn.innerText = isLoginMode ? "Unlock" : "Sign Up";
@@ -170,13 +186,84 @@ async function submitAuth() {
     }
 }
 
-function unlockOS(email) {
+// SUBMIT PUTER AUTH - Authenticate with Puter backend
+async function submitPuterAuth() {
+    const btn = document.getElementById('puter-signin-btn');
+    btn.innerText = "Signing in...";
+    document.getElementById('login-error').style.display = 'none';
+
+    try {
+        if (!window.puterBackend) {
+            throw new Error('Puter backend not loaded');
+        }
+
+        // Wait for Puter to initialize
+        let attempts = 0;
+        while (!window.puterBackend.isInitialized && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+        }
+
+        if (!window.puterBackend.isInitialized) {
+            throw new Error('Puter backend failed to initialize');
+        }
+
+        // Check if already authenticated
+        const isAuthenticated = await window.puterBackend.isAuthenticated();
+        if (isAuthenticated) {
+            const user = await window.puterBackend.getCurrentUser();
+            safeLSSet('os_email', user.email);
+            unlockOS(user.email, false);
+            return;
+        }
+
+        // Trigger Puter authentication flow
+        showAuthError("Please authenticate with Puter in the popup window that appeared.");
+        
+        // Give the user a moment to respond to popup
+        setTimeout(async () => {
+            try {
+                const isNowAuth = await window.puterBackend.isAuthenticated();
+                if (isNowAuth) {
+                    const user = await window.puterBackend.getCurrentUser();
+                    safeLSSet('os_email', user.email);
+                    unlockOS(user.email, false);
+                } else {
+                    showAuthError("Puter authentication cancelled or failed.");
+                    btn.innerText = "Sign in with Puter";
+                }
+            } catch (e) {
+                showAuthError("Puter authentication error: " + e.message);
+                btn.innerText = "Sign in with Puter";
+            }
+        }, 1000);
+    } catch (error) {
+        console.error('Puter authentication error:', error);
+        showAuthError(error.message || "Puter connection failed. Check console.");
+        btn.innerText = "Sign in with Puter";
+    }
+}
+
+// Google Apps Script Authentication Functions (placeholder)
+async function authenticateWithGApps(email, password) {
+    // This would normally call your Google Apps Script backend
+    // For now, return success for testing
+    return { success: true, error: null };
+}
+
+async function signUpWithGApps(email, password, username) {
+    // This would normally call your Google Apps Script backend
+    // For now, return success for testing
+    return { success: true, error: null };
+}
+
+function unlockOS(email, isGuest = false) {
     const ls = document.getElementById('lock-screen');
     ls.style.filter = "blur(20px)";
     ls.style.opacity = "0";
     setTimeout(() => { 
         ls.classList.add('hidden'); 
-        initOS(email); 
+        initOS(email, isGuest); 
     }, 500);
 }
 
@@ -185,15 +272,20 @@ function unlockOS(email) {
 // --------------------------------------------------------
 // CORE OS INIT
 // --------------------------------------------------------
-async function initOS(userEmail) {
+async function initOS(userEmail, isGuest = false) {
     window.currentUser = userEmail;
+    window.isGuestMode = isGuest;
     const savedTheme = safeLSGet('os_theme', '#0078D4') || '#0078D4';
     document.documentElement.style.setProperty('--accent', savedTheme);
     const savedWallpaper = safeLSGet('wallpaper', null);
     if (savedWallpaper) document.body.style.backgroundImage = `url('${savedWallpaper}')`;
     
     try {
-        await VFS.init();
+        // For guest mode, use localStorage-based VFS
+        if (isGuest) {
+            console.log('Initializing guest mode - using localStorage for data storage');
+        }
+        await VFS.init(isGuest);
     } catch (e) {
         throw e;
     }
@@ -419,8 +511,8 @@ if (index !== -1 && OPEN_WINDOWS[index]) {
 };
     win.querySelector('.minimize').onclick = () => { win.style.display = 'none'; renderTaskbar(); };
     win.querySelector('.box').onclick = () => {
-        if(win.style.width === '100%') { win.style.width = win.dataset.oldWidth || '800px'; win.style.height = win.dataset.oldHeight || '550px'; win.style.left = '150px'; win.style.top = '80px'; win.dataset.snapped = ""; }
-        else { win.dataset.oldWidth = win.style.width; win.dataset.oldHeight = win.style.height; win.style.width = '100%'; win.style.height = 'calc(100% - 52px)'; win.style.left = '0'; win.style.top = '0'; win.dataset.snapped = "true"; }
+        if(win.style.width === '100%') { win.style.width = win.dataset.oldWidth || '800px'; win.style.height = win.dataset.oldHeight || '550px'; win.style.left = '150px'; win.style.top = '80px'; win.style.transition = 'none'; }
+        else { win.dataset.oldWidth = win.style.width; win.dataset.oldHeight = win.style.height; win.style.width = '100%'; win.style.height = 'calc(100% - 52px)'; win.style.left = '0'; win.style.top = '0'; win.style.transition = 'none'; }
     };
 }
 
@@ -712,7 +804,7 @@ function getAppIconHTML(app, isSmall = false) {
         return `<img src="${app.icon}" class="${fallbackClass}" style="background: transparent; box-shadow: none; object-fit: contain;">`;
     }
     const pathParts = app.path.split('/'); const baseName = pathParts.pop().replace('.html', ''); const folderPath = pathParts.join('/'); 
-    return `<img src="${folderPath}/icons/${baseName}.png" class="${fallbackClass}" style="background:transparent; box-shadow:none; object-fit:contain;" onerror="this.onerror=null; this.src='${folderPath}/icons/${baseName}.jpg'; this.onerror=function(){ const d = document.createElement('div'); d.className='${fallbackClass}'; d.innerText='${app.name.charAt(0)}'; this.parentNode.replaceChild(d, this); }">`;
+    return `<img src="${folderPath}/icons/${baseName}.png" class="${fallbackClass}" style="background:transparent; box-shadow:none; object-fit:contain;" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23555%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'">`;
 }
 
 function openFile(file) {
@@ -727,7 +819,7 @@ function openFile(file) {
                     <span>📝 Editing: ${file.name}</span>
                     <span style="color:#60cdff">Auto-saves as you type</span>
                 </div>
-                <textarea spellcheck="false" style="flex:1; padding:15px; background:#1e1e1e; color:#d4d4d4; border:none; outline:none; font-family:'Consolas', monospace; font-size:13px; resize:none; white-space:pre; overflow:auto;" oninput="window.parent.VFS.saveFile('${file.name}', '${file.type}', this.value)">${safeContent}</textarea>
+                <textarea spellcheck="false" style="flex:1; padding:15px; background:#1e1e1e; color:#d4d4d4; border:none; outline:none; font-family:'Consolas', monospace; font-size:13px; resize:none;" onchange="window.parent.postMessage({action:'saveFile', name:'${file.name}', content:this.value}, '*')">${safeContent}</textarea>
             </div>
         `;
         openWindow(file.name.split('/').pop(), null, editorHTML);
@@ -741,15 +833,15 @@ function openFile(file) {
     }
     // 3. IMAGES
     else if(['png', 'jpg', 'jpeg', 'gif'].includes(ext)) {
-        openWindow(file.name.split('/').pop(), null, `<div style="background:#111;height:100%;display:flex;align-items:center;justify-content:center;"><img src="${file.content}" style="max-width:100%;max-height:100%;"></div>`);
+        openWindow(file.name.split('/').pop(), null, `<div style="background:#111;height:100%;display:flex;align-items:center;justify-content:center;"><img src="${file.content}" style="max-width:100%;max-height:100%;object-fit:contain;"></div>`);
     }
     // 4. VIDEOS
     else if(['mp4', 'webm'].includes(ext)) {
-        openWindow(file.name.split('/').pop(), null, `<div style="background:#000;height:100%;display:flex;align-items:center;justify-content:center;"><video src="${file.content}" controls autoplay style="width:100%;height:100%;outline:none;"></video></div>`);
+        openWindow(file.name.split('/').pop(), null, `<div style="background:#000;height:100%;display:flex;align-items:center;justify-content:center;"><video src="${file.content}" controls autoplay style="max-width:100%;max-height:100%;"></video></div>`);
     }
     // 5. AUDIO
     else if(['mp3', 'wav'].includes(ext)) {
-        openWindow(file.name.split('/').pop(), null, `<div style="background:#111;height:100%;display:flex;align-items:center;justify-content:center; flex-direction:column; gap:20px;"><h2>📝 ${file.name.split('/').pop()}</h2><audio src="${file.content}" controls autoplay style="width:80%;outline:none;"></audio></div>`);
+        openWindow(file.name.split('/').pop(), null, `<div style="background:#111;height:100%;display:flex;align-items:center;justify-content:center; flex-direction:column; gap:20px;"><h2>📝 ${file.name.split('/').pop()}</h2><audio src="${file.content}" controls style="width:90%;"></audio></div>`);
     }
     // 6. JAVA ARCHIVES (.jar) - executed with CheerpJ
     else if (ext === 'jar') {
