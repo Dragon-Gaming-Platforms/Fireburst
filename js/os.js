@@ -807,7 +807,19 @@ function getAppIconHTML(app, isSmall = false) {
     return `<img src="${folderPath}/icons/${baseName}.png" class="${fallbackClass}" style="background:transparent; box-shadow:none; object-fit:contain;" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23555%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'">`;
 }
 
-function openFile(file) {
+async function ensureVFSFileContent(file) {
+    if (file && typeof file.content === 'string') return file;
+    if (!file || !window.VFS || typeof VFS.getFile !== 'function') return file;
+    const content = await VFS.getFile(file.name);
+    return Object.assign({}, file, { content });
+}
+
+function escapeHTML(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function openFile(file) {
+    file = await ensureVFSFileContent(file);
     const ext = file.name.split('.').pop().toLowerCase();
     
     // 1. TEXT & CODE FILES (Opens in Code Editor)
@@ -845,58 +857,41 @@ function openFile(file) {
     }
     // 6. JAVA ARCHIVES (.jar) - executed with CheerpJ
     else if (ext === 'jar') {
-        const jarRunnerHTML = `
-            <div style="height:100%;display:flex;flex-direction:column;background:#101010;color:#f2f2f2;font-family:Segoe UI,sans-serif;">
-                <div style="padding:12px 14px;background:#1a1a1a;border-bottom:1px solid #2b2b2b;display:flex;justify-content:space-between;align-items:center;">
-                    <div><b>CheerpJ JAR Runner</b> <span style="opacity:.7">(${file.name.split('/').pop()})</span></div>
-                    <button id="jar-run-btn" style="border:0;padding:8px 12px;border-radius:8px;background:#0078D4;color:#fff;cursor:pointer;">Run JAR</button>
-                </div>
-                <div id="cheerpj-status" style="padding:10px 14px;font-size:12px;color:#bbb;">Ready. Press "Run JAR".</div>
-                <iframe id="cheerpj-frame" style="border:0;flex:1;background:#000;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-            </div>
-            <script>
-                (function() {
-                    var statusEl = document.getElementById('cheerpj-status');
-                    var runBtn = document.getElementById('jar-run-btn');
-                    var frame = document.getElementById('cheerpj-frame');
-                    function setStatus(msg) { statusEl.textContent = msg; }
-
-                    runBtn.addEventListener('click', function() {
-                        setStatus('Starting CheerpJ runtime...');
-                        var src = \`
-                            <!DOCTYPE html>
-                            <html>
-                            <head><meta charset="UTF-8"><style>html,body,#c{margin:0;height:100%;background:#000;color:#ddd;font-family:monospace;}</style></head>
-                            <body>
-                                <div id="c">Booting Java runtime...</div>
-                                <script src="https://cjrtnc.leaningtech.com/4.1/loader.js"><\\/script>
-                                <script>
-                                    (async function() {
-                                        try {
-                                            if (!window.cheerpjInit || !window.cheerpjRunJar) throw new Error('CheerpJ loader unavailable.');
-                                            await cheerpjInit({ disableLoadTimeReporting: true });
-                                            document.getElementById('c').textContent = 'Running JAR...';
-                                            await cheerpjRunJar(${JSON.stringify(file.content)});
-                                        } catch (e) {
-                                            document.getElementById('c').textContent = 'CheerpJ error: ' + (e && e.message ? e.message : String(e));
-                                        }
-                                    })();
-                                <\\/script>
-                            </body>
-                            </html>
-                        \`;
-                        frame.srcdoc = src;
-                        setStatus('CheerpJ launched inside isolated runner frame.');
-                    });
-                })();
-            <\/script>
-        `;
-        openWindow(file.name.split('/').pop(), null, jarRunnerHTML);
+        openJarWithCheerpJ(file);
     }
     // 6. UNKNOWN
     else {
         window.osAlert('Error', 'Filetype not supported or unrecognized executable.');
     }
+}
+
+function openJarWithCheerpJ(file) {
+    const fileName = file.name.split('/').pop();
+    const frameId = 'cheerpj-frame-' + Date.now().toString(36);
+    const safeName = escapeHTML(fileName);
+    const safeRunnerUrl = 'system/cheerpj-runner.html';
+        const jarRunnerHTML = `
+            <div style="height:100%;display:flex;flex-direction:column;background:#101010;color:#f2f2f2;font-family:Segoe UI,sans-serif;">
+                <div style="padding:12px 14px;background:#1a1a1a;border-bottom:1px solid #2b2b2b;display:flex;justify-content:space-between;align-items:center;">
+                    <div><b>CheerpJ JAR Runner</b> <span style="opacity:.7">(${safeName})</span></div>
+                </div>
+                <div id="cheerpj-status" style="padding:10px 14px;font-size:12px;color:#bbb;">Starting CheerpJ runtime...</div>
+                <iframe id="${frameId}" src="${safeRunnerUrl}" style="border:0;flex:1;background:#000;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+            </div>
+        `;
+    openWindow(fileName, null, jarRunnerHTML);
+    const sendJar = () => {
+        const frame = document.getElementById(frameId);
+        const status = document.getElementById('cheerpj-status');
+        if (!frame || !frame.contentWindow) return;
+        if (status) status.textContent = 'Loading JAR into CheerpJ VFS...';
+        frame.contentWindow.postMessage({
+            type: 'fireburst:run-jar',
+            name: fileName,
+            content: file.content
+        }, '*');
+    };
+    setTimeout(sendJar, 600);
 }
 // --------------------------------------------------------
 // ACTION CENTER & MENUS
@@ -967,7 +962,9 @@ document.getElementById('ctx-new-folder').onclick = async () => {
 // Failsafe: Force text boxes to populate immediately just in case
 const savedUrl = safeLSGet('chat_backend_url', null);
 const savedEmail = safeLSGet('os_email', null);
-const runtimeBackendUrl = getConfiguredBackendUrl();
+const runtimeBackendUrl = typeof window.getConfiguredBackendUrl === 'function'
+    ? window.getConfiguredBackendUrl()
+    : (window.RUNTIME_CONFIG && window.RUNTIME_CONFIG.BACKEND_URL) || '';
 if (runtimeBackendUrl && !savedUrl) safeLSSet('chat_backend_url', runtimeBackendUrl);
 const backendUrlInput = document.getElementById('backend-url');
 if ((savedUrl || runtimeBackendUrl) && backendUrlInput) backendUrlInput.value = savedUrl || runtimeBackendUrl;
@@ -975,11 +972,23 @@ if (savedEmail) document.getElementById('login-email').value = savedEmail;
 
 // CheerpX integration functions
 async function runWithCheerpX(file) {
-    window.osAlert('Unavailable', 'Legacy native CheerpX runner has been removed from this build.');
+    try {
+        file = await ensureVFSFileContent(file);
+        const result = await window.DragonCheerpX.runGUI(file.name, file);
+        if (result && result.stderr) showNotification('CheerpX', result.stderr);
+    } catch (err) {
+        window.osAlert('CheerpX Error', err.message || String(err));
+    }
 }
 
 async function runWithWine(file) {
-    window.osAlert('Unavailable', 'Legacy Wine launcher has been removed from this build.');
+    try {
+        file = await ensureVFSFileContent(file);
+        const result = await window.DragonCheerpX.runWine(file.name, file);
+        if (result && result.stderr) showNotification('Wine', result.stderr);
+    } catch (err) {
+        window.osAlert('Wine Error', err.message || String(err));
+    }
 }
 
 async function initPWA() {
