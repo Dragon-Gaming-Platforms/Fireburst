@@ -1,9 +1,0 @@
-<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>GBA Emulator</title></head><body style='font-family:Segoe UI;background:#121212;color:#eee;padding:20px'>
-<h2>GBA Emulator</h2><p><b>Legal notice:</b> Emulator engine only. No ROMs/BIOS included. Load only games you legally own.</p>
-<input id='rom' type='file'><button onclick='launch()'>Load ROM</button><button onclick='save()'>Save State</button><button onclick='load()'>Load State</button>
-<div id='status' style='margin-top:12px;color:#9ecbff'></div>
-<script>
-function launch(){const f=document.getElementById('rom').files[0];document.getElementById('status').textContent=f?`Loaded: ${f.name}`:'Select a ROM first';}
-function save(){window.parent.EmulatorManager?.saveState('gba',0);document.getElementById('status').textContent='Saved state slot 0';}
-function load(){const st=window.parent.EmulatorManager?.loadState('gba',0);document.getElementById('status').textContent=st?'Loaded state slot 0':'No state found';}
-</script></body></html>
