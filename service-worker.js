@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fireburst-v2';
+const CACHE_VERSION = 'fireburst-v3';
 const CORE_ASSETS = [
   '/', '/index.html', '/css/style.css', '/js/os.js', '/js/vfs.js', '/js/puter-backend.js',
   '/js/runtime-config.js', '/apps/preinstalled/file-explorer.html', '/apps/preinstalled/terminal.html',
@@ -17,8 +17,14 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
-    const url = new URL(event.request.url);
     const needsCheerpXIsolation = url.pathname.endsWith('/system/cheerpx-runner.html') || url.pathname.includes('/vendor/cheerpx/');
     const response = needsCheerpXIsolation
       ? new Response(res.body, {
@@ -30,7 +36,10 @@ self.addEventListener('fetch', (event) => {
     const copy = response.clone();
     caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, copy));
     return response;
-  }).catch(() => caches.match('/index.html'))));
+  }).catch(() => {
+    if (event.request.mode === 'navigate') return caches.match('/index.html');
+    return new Response('', { status: 504, statusText: 'Gateway Timeout' });
+  })));
 });
 
 function withCheerpXHeaders(sourceHeaders) {
