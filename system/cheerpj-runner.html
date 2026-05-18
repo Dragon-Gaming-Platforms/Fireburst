@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fireburst CheerpJ Runner</title>
+  <style>
+    html, body, #display {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      color: #ddd;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      overflow: hidden;
+    }
+    #status {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.78);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+    }
+  </style>
+  <script src="https://cjrtnc.leaningtech.com/4.3/loader.js"></script>
+</head>
+<body>
+  <div id="status">Waiting for JAR...</div>
+  <div id="display"></div>
+  <script>
+    const statusEl = document.getElementById('status');
+    let cheerpjReady = null;
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function sanitizeJarName(name) {
+      return String(name || 'application.jar').split('/').pop().replace(/[^A-Za-z0-9._-]/g, '_') || 'application.jar';
+    }
+
+    function dataURLToBytes(dataURL) {
+      const commaIndex = dataURL.indexOf(',');
+      if (commaIndex === -1) return new TextEncoder().encode(dataURL);
+      const meta = dataURL.slice(0, commaIndex);
+      const payload = dataURL.slice(commaIndex + 1);
+      if (!/;base64/i.test(meta)) return new TextEncoder().encode(decodeURIComponent(payload));
+      const binary = atob(payload);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    async function ensureCheerpJ() {
+      if (!cheerpjReady) {
+        cheerpjReady = (async () => {
+          if (!window.cheerpjInit || !window.cheerpjRunJar || !window.cheerpOSAddStringFile) {
+            throw new Error('CheerpJ loader unavailable.');
+          }
+          await cheerpjInit({ disableLoadTimeReporting: true });
+          cheerpjCreateDisplay(-1, -1, document.getElementById('display'));
+        })();
+      }
+      return cheerpjReady;
+    }
+
+    window.addEventListener('message', async (event) => {
+      if (!event.data || event.data.type !== 'fireburst:run-jar') return;
+      const jarName = sanitizeJarName(event.data.name);
+      const jarPath = `/str/${jarName}`;
+
+      try {
+        setStatus(`Preparing ${jarName}...`);
+        await ensureCheerpJ();
+        const bytes = dataURLToBytes(event.data.content || '');
+        await cheerpOSAddStringFile(jarPath, bytes);
+        setStatus(`Running ${jarName}...`);
+        const exitCode = await cheerpjRunJar(jarPath);
+        setStatus(`${jarName} exited with code ${exitCode}.`);
+      } catch (err) {
+        setStatus(`CheerpJ error: ${err && err.message ? err.message : String(err)}`);
+      }
+    });
+  </script>
+</body>
+</html>

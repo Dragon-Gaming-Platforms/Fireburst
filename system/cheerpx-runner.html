@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Fireburst CheerpX Runner</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #050505;
+      color: #d7f8d7;
+      font: 13px ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    #console {
+      box-sizing: border-box;
+      height: 100%;
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <pre id="console">Fireburst CheerpX runner starting...</pre>
+  <script type="module">
+    import * as CheerpX from '../vendor/cheerpx/cx.esm.js';
+
+    const consoleEl = document.getElementById('console');
+    let initPromise = null;
+    let cx = null;
+    let dataDevice = null;
+
+    function post(id, payload) {
+      if (window.opener) window.opener.postMessage(Object.assign({ type: 'fireburst:cheerpx-response', id }, payload), '*');
+    }
+
+    function append(line) {
+      consoleEl.textContent += `\n${line}`;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    async function initCheerpX() {
+      if (initPromise) return initPromise;
+      initPromise = (async () => {
+        if (!window.crossOriginIsolated) {
+          throw new Error('CheerpX needs cross-origin isolation. Refresh Fireburst once so the service worker can apply the runner headers, then try again.');
+        }
+
+        append('Creating CheerpX devices...');
+        const cloudDevice = await CheerpX.CloudDevice.create('wss://disks.webvm.io/debian_large_20230522_5044875331.ext2');
+        const idbDevice = await CheerpX.IDBDevice.create('fireburst-cheerpx-overlay');
+        const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
+        const webDevice = await CheerpX.WebDevice.create('../');
+        dataDevice = await CheerpX.DataDevice.create();
+
+        cx = await CheerpX.Linux.create({
+          mounts: [
+            { type: 'ext2', path: '/', dev: overlayDevice },
+            { type: 'dir', path: '/app', dev: webDevice },
+            { type: 'dir', path: '/data', dev: dataDevice },
+            { type: 'devs', path: '/dev' },
+            { type: 'proc', path: '/proc' }
+          ]
+        });
+        cx.setConsole(consoleEl);
+        append('CheerpX ready.');
+        return cx;
+      })();
+      return initPromise;
+    }
+
+    async function executeCommand(command) {
+      await initCheerpX();
+      const before = consoleEl.textContent;
+      const result = await cx.run('/bin/bash', ['-lc', command], {
+        env: ['HOME=/home/user', 'USER=user', 'SHELL=/bin/bash', 'LANG=en_US.UTF-8', 'LC_ALL=C'],
+        cwd: '/home/user',
+        uid: 1000,
+        gid: 1000
+      });
+      const output = consoleEl.textContent.slice(before.length).trim();
+      return { ok: result.status === 0, stdout: output ? output + '\n' : '', stderr: result.status === 0 ? '' : `Exited with status ${result.status}` };
+    }
+
+    async function uploadFile(file, path) {
+      await initCheerpX();
+      const name = String(file && file.name ? file.name : 'upload.bin').split('/').pop().replace(/[^A-Za-z0-9._-]/g, '_');
+      const content = file && file.content ? file.content : '';
+      await dataDevice.writeFile(`${path || '/data'}/${name}`, dataURLToBytes(content));
+      return { success: true, path: `${path || '/data'}/${name}` };
+    }
+
+    function dataURLToBytes(dataURL) {
+      const value = String(dataURL || '');
+      const commaIndex = value.indexOf(',');
+      if (commaIndex === -1) return new TextEncoder().encode(value);
+      const meta = value.slice(0, commaIndex);
+      const payload = value.slice(commaIndex + 1);
+      if (!/;base64/i.test(meta)) return new TextEncoder().encode(decodeURIComponent(payload));
+      const binary = atob(payload);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    window.addEventListener('message', async (event) => {
+      const message = event.data;
+      if (!message || message.type !== 'fireburst:cheerpx-request') return;
+      try {
+        if (message.action === 'ping') {
+          post(message.id, { success: true });
+        } else if (message.action === 'executeCommand') {
+          post(message.id, { success: true, result: await executeCommand(message.command) });
+        } else if (message.action === 'uploadFile') {
+          post(message.id, await uploadFile(message.file, message.path));
+        } else if (message.action === 'runNativeApp') {
+          const uploaded = message.file ? await uploadFile(message.file, '/data') : null;
+          const command = uploaded ? `chmod +x ${shellQuote(uploaded.path)} && ${shellQuote(uploaded.path)}` : message.executable;
+          post(message.id, { success: true, result: await executeCommand(command) });
+        } else if (message.action === 'runWindowsApp') {
+          const uploaded = message.file ? await uploadFile(message.file, '/data') : null;
+          post(message.id, { success: true, result: await executeCommand(`wine ${shellQuote(uploaded ? uploaded.path : message.executable)}`) });
+        } else {
+          throw new Error(`Unknown CheerpX action: ${message.action}`);
+        }
+      } catch (err) {
+        post(message.id, { success: false, error: err && err.message ? err.message : String(err) });
+      }
+    });
+
+    function shellQuote(value) {
+      return `'${String(value).replace(/'/g, "'\\''")}'`;
+    }
+  </script>
+</body>
+</html>
