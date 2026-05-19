@@ -40,29 +40,12 @@
         "icon": "📢"
     },
     {
-        "id": "fireburst-browser",
-        "name": "Fireburst Browser",
-        "path": "apps/browsers/Browser.html",
-        "category": "Browser",
-        "preinstalled": true,
-        "icon": "🔗",
-        "description": "Simple iframe-based web browser with configurable settings"
-    },
-    {
         "id": "github-dashboard",
         "name": "GitHub Dashboard",
         "path": "apps/preinstalled/github-dashboard.html",
         "category": "Developer Tools",
         "preinstalled": true,
         "icon": "🐙"
-    },
-    {
-        "id": "git-client",
-        "name": "Git Client",
-        "path": "apps/preinstalled/git-client.html",
-        "category": "Developer Tools",
-        "preinstalled": true,
-        "icon": "🌿"
     },
     {
         "id": "html-editor",
