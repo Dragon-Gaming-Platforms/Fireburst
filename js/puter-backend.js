@@ -2,6 +2,10 @@
 // Replaces Google Apps Script backend for cloud storage, authentication, and data management
 // Puter.js provides user accounts, file storage, and database functionality without backend secrets
 
+// Suppress Puter console output
+window.puter = window.puter || {};
+window.puter.quiet = true;
+
 class PuterBackend {
     constructor() {
         this.isInitialized = false;
@@ -19,7 +23,6 @@ class PuterBackend {
      */
     async initialize() {
         try {
-            console.log('Initializing Puter backend...');
             this._initFallbackFromConfig();
 
             // Check if Puter is available in the environment
@@ -27,11 +30,9 @@ class PuterBackend {
                 this.mode = 'puter';
                 this.isInitialized = true;
                 this.currentUser = await this.getCurrentUser();
-                console.log('✓ Puter backend initialized');
                 return true;
             } else {
                 // Puter SDK not available, will need to load or use fallback
-                console.warn('Puter SDK not available, attempting to load...');
                 await this.loadPuterSDK();
                 this.mode = 'puter';
                 this.isInitialized = true;
@@ -39,9 +40,8 @@ class PuterBackend {
                 return true;
             }
         } catch (error) {
-            console.warn('Puter initialization failed:', error.message);
             this._initFallbackFromConfig();
-            if (this.fallbackBackend) console.log('Falling back to Google Apps Script backend');
+            if (this.fallbackBackend) { /* silent fallback */ }
             this.isInitialized = true; // Still initialized, just using fallback
             this.mode = 'fallback';
             return true;
