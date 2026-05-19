@@ -53,7 +53,6 @@
         "path": "apps/preinstalled/Scramjet.html",
         "category": "Entertainment",
         "preinstalled": true,
-        "icon": "🚀"
     },
     {
         "id": "youtube",
@@ -61,7 +60,6 @@
         "path": "apps/preinstalled/Youtube.html",
         "category": "Entertainment",
         "preinstalled": true,
-        "icon": "▶️"
     },
     {
         "id": "html-editor",
@@ -69,7 +67,6 @@
         "path": "apps/store/html-editor.html",
         "category": "Productivity",
         "preinstalled": false,
-        "icon": "💻"
     },
     {
         "id": "github-importer",
@@ -100,24 +97,21 @@
         "name": "Messages",
         "path": "apps/store/messages.html",
         "category": "Communication",
-        "preinstalled": false,
-        "icon": "💬"
+        "preinstalled": false
     },
     {
         "id": "incognito",
         "name": "Incognito Browser",
         "path": "apps/store/Incognito.html",
         "category": "Browsers",
-        "preinstalled": false,
-        "icon": "🕵️"
+        "preinstalled": false
     },
     {
         "id": "drive-mad",
         "name": "Drive Mad",
         "path": "apps/store/Drive Mad.html",
         "category": "Games",
-        "preinstalled": false,
-        "icon": "🚗"
+        "preinstalled": false
     },
     {
         "id": "escape-road",
@@ -132,8 +126,7 @@
         "name": "Hole io",
         "path": "apps/store/Hole io.html",
         "category": "Games",
-        "preinstalled": false,
-        "icon": "🕳️"
+        "preinstalled": false
     },
     {
         "id": "vex-8",
@@ -172,8 +165,7 @@
         "name": "Rammerhead",
         "path": "apps/store/Rammerhead.html",
         "category": "Browsers",
-        "preinstalled": false,
-        "icon": "🐏"
+        "preinstalled": false
     },
     {
         "id": "start-my-education",
@@ -188,40 +180,35 @@
         "name": "GN Math",
         "path": "apps/store/Gn-math.html",
         "category": "Education",
-        "preinstalled": false,
-        "icon": "🧮"
+        "preinstalled": false
     },
     {
         "id": "anura-os",
         "name": "Anura OS",
         "path": "apps/store/Anura os.html",
         "category": "Systems",
-        "preinstalled": false,
-        "icon": "🖥️"
+        "preinstalled": false
     },
     {
         "id": "eaglercraft-1-8-8",
         "name": "Eaglercraft 1.8.8",
         "path": "apps/store/Eaglercraft 1.8.8.html",
         "category": "Games",
-        "preinstalled": false,
-        "icon": "⛏️"
+        "preinstalled": false
     },
     {
         "id": "eaglercraft-1-12-2",
         "name": "Eaglercraft 1.12.2",
         "path": "apps/store/Eaglercraft 1.12.2.html",
         "category": "Games",
-        "preinstalled": false,
-        "icon": "⛏️"
+        "preinstalled": false
     },
     {
         "id": "java-minecraft",
         "name": "Java Minecraft",
         "path": "apps/store/Java Edition Minecraft.html",
         "category": "Games",
-        "preinstalled": false,
-        "icon": "🟩"
+        "preinstalled": false
     },
     {
         "id": "lego-starwars",
