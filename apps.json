@@ -190,5 +190,181 @@
         "category": "Education",
         "preinstalled": false,
         "icon": "🧮"
+    },
+    {
+        "id": "anura-os",
+        "name": "Anura OS",
+        "path": "apps/store/Anura os.html",
+        "category": "Systems",
+        "preinstalled": false,
+        "icon": "🖥️"
+    },
+    {
+        "id": "eaglercraft-1-8-8",
+        "name": "Eaglercraft 1.8.8",
+        "path": "apps/store/Eaglercraft 1.8.8.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "⛏️"
+    },
+    {
+        "id": "eaglercraft-1-12-2",
+        "name": "Eaglercraft 1.12.2",
+        "path": "apps/store/Eaglercraft 1.12.2.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "⛏️"
+    },
+    {
+        "id": "java-minecraft",
+        "name": "Java Minecraft",
+        "path": "apps/store/Java Edition Minecraft.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🟩"
+    },
+    {
+        "id": "lego-starwars",
+        "name": "Lego Star Wars",
+        "path": "apps/store/Lego Starwars.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🧱"
+    },
+    {
+        "id": "link-to-the-past",
+        "name": "Link to the Past",
+        "path": "apps/store/Link To The Past.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🗡️"
+    },
+    {
+        "id": "mario-kart-ds",
+        "name": "Mario Kart DS",
+        "path": "apps/store/Mario Kart ds.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🏎️"
+    },
+    {
+        "id": "mario-kart-super-circuit",
+        "name": "Mario Kart Super Circuit",
+        "path": "apps/store/Mariokartsupercircuit.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🏎️"
+    },
+    {
+        "id": "ocarina-of-time",
+        "name": "Ocarina of Time",
+        "path": "apps/store/Ocarina Of Time.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🎵"
+    },
+    {
+        "id": "pokemon-mystery-dungeon",
+        "name": "Pokemon Mystery Dungeon",
+        "path": "apps/store/Pokemon Mystery Dungeon.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🐾"
+    },
+    {
+        "id": "pokemon-rocket-edition",
+        "name": "Pokemon Rocket Edition",
+        "path": "apps/store/Pokemon Rocket Edition.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🔴"
+    },
+    {
+        "id": "super-mario-64-ds",
+        "name": "Super Mario 64 DS",
+        "path": "apps/store/Super Mario 64 ds.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🍄"
+    },
+    {
+        "id": "super-mario-bros",
+        "name": "Super Mario Bros",
+        "path": "apps/store/Super Mario Bros.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🍄"
+    },
+    {
+        "id": "sword-and-shield",
+        "name": "Sword and Shield",
+        "path": "apps/store/Sword and Shield.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "⚔️"
+    },
+    {
+        "id": "zelda-legend-of-link",
+        "name": "Zelda: Legend of Link",
+        "path": "apps/store/Zelda The Legend Of Link.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🗡️"
+    },
+    {
+        "id": "nes-emulator",
+        "name": "NES Emulator",
+        "path": "system/nes-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "snes-emulator",
+        "name": "SNES Emulator",
+        "path": "system/snes-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "gba-emulator",
+        "name": "GBA Emulator",
+        "path": "system/gba-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "gameboy-emulator",
+        "name": "Game Boy Emulator",
+        "path": "system/gameboy-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "genesis-emulator",
+        "name": "Genesis Emulator",
+        "path": "system/genesis-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "nds-emulator",
+        "name": "NDS Emulator",
+        "path": "system/nds-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
+    },
+    {
+        "id": "psx-emulator",
+        "name": "PSX Emulator",
+        "path": "system/psx-emulator.html",
+        "category": "Emulators",
+        "preinstalled": false,
+        "icon": "🎮"
     }
 ]
