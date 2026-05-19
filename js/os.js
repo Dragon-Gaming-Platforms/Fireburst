@@ -313,6 +313,47 @@ function updateClockDate() {
 // --------------------------------------------------------
 // WINDOW MANAGER (WITH RESIZING)
 // --------------------------------------------------------
+const APP_IFRAME_SANDBOX = [
+    'allow-scripts',
+    'allow-same-origin',
+    'allow-forms',
+    'allow-popups',
+    'allow-popups-to-escape-sandbox',
+    'allow-top-navigation',
+    'allow-top-navigation-by-user-activation',
+    'allow-downloads',
+    'allow-pointer-lock',
+    'allow-presentation',
+    'allow-modals',
+    'allow-orientation-lock'
+].join(' ');
+const APP_IFRAME_ALLOW = [
+    'accelerometer',
+    'autoplay',
+    'camera',
+    'clipboard-read',
+    'clipboard-write',
+    'encrypted-media',
+    'fullscreen',
+    'gamepad',
+    'gyroscope',
+    'magnetometer',
+    'microphone',
+    'payment',
+    'picture-in-picture',
+    'screen-wake-lock',
+    'web-share',
+    'xr-spatial-tracking'
+].join('; ');
+
+function escapeAttr(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function createAppIframeHTML(url) {
+    return `<iframe src="${escapeAttr(url)}" sandbox="${APP_IFRAME_SANDBOX}" allow="${APP_IFRAME_ALLOW}" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+}
+
 function openWindow(appOrTitle, url, contentHTML = null, fallbackAppId = null) {
     const title = typeof appOrTitle === 'string' ? appOrTitle : appOrTitle.name;
     const appId = typeof appOrTitle === 'string' ? fallbackAppId : appOrTitle.id;
@@ -341,7 +382,7 @@ function openWindow(appOrTitle, url, contentHTML = null, fallbackAppId = null) {
         <div class="resize-handle resizer-br"></div>
         <div class="window-content">
             <div class="drag-shield"></div>
-            ${contentHTML ? contentHTML : `<iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`}
+            ${contentHTML ? contentHTML : createAppIframeHTML(url)}
         </div>
     `;
     document.body.appendChild(win);
@@ -839,7 +880,7 @@ async function openFile(file) {
     // 2. EXECUTABLE APPS (.exe compiled from HTML)
     else if (ext === 'exe') {
         const safeContent = file.content.replace(/"/g, '&quot;');
-        const exeHTML = `<iframe srcdoc="${safeContent}" style="width:100%; height:100%; border:none; background:#fff; pointer-events:auto;" sandbox="allow-scripts allow-forms allow-popups allow-same-origin"></iframe>`;
+        const exeHTML = `<iframe srcdoc="${safeContent}" style="width:100%; height:100%; border:none; background:#fff; pointer-events:auto;" sandbox="${APP_IFRAME_SANDBOX}" allow="${APP_IFRAME_ALLOW}" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
         // Opens exactly like a system app!
         openWindow(file.name.split('/').pop(), null, exeHTML);
     }
@@ -876,7 +917,7 @@ function openJarWithCheerpJ(file) {
                     <div><b>CheerpJ JAR Runner</b> <span style="opacity:.7">(${safeName})</span></div>
                 </div>
                 <div id="cheerpj-status" style="padding:10px 14px;font-size:12px;color:#bbb;">Starting CheerpJ runtime...</div>
-                <iframe id="${frameId}" src="${safeRunnerUrl}" style="border:0;flex:1;background:#000;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"></iframe>
+                <iframe id="${frameId}" src="${safeRunnerUrl}" style="border:0;flex:1;background:#000;" sandbox="${APP_IFRAME_SANDBOX}" allow="${APP_IFRAME_ALLOW}" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
             </div>
         `;
     openWindow(fileName, null, jarRunnerHTML);
