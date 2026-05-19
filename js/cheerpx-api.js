@@ -5,9 +5,15 @@
  *   It does NOT require COI and must remain unaffected by CheerpX constraints.
  * - CheerpX command execution is delegated through window.cheerpxBridge to a separate
  *   COI-enabled runner context.
- * - Native GUI apps (ELF binaries, Wine apps, etc.) are launched by that runner and should
- *   open in dedicated tabs/windows configured for COI.
+ * - The terminal UI uses Xterm.js in system/terminal.html for proper terminal emulation.
+ * - Native GUI apps (ELF binaries, Wine apps, etc.) are launched by the COI runner context.
  * - File sync uses the bridge boundary to copy data between the main VFS and CheerpX runtime.
+ * 
+ * Architecture:
+ * - Main OS (index.html) = No COI, loads system/terminal.html, existing apps work
+ * - System Terminal (system/terminal.html) = Xterm.js UI, no COI needed
+ * - CheerpX Context (cheerpx-terminal.html) = COI enabled, CheerpX execution only
+ * - Communication via postMessage between contexts
  */
 class DragonCheerpXClass {
   constructor() {
@@ -15,18 +21,21 @@ class DragonCheerpXClass {
     this.bridge = window.cheerpxBridge || null;
     this.pending = new Map();
     this.requestId = 0;
+    this.cheerpxWindow = null;
     window.addEventListener('message', (event) => this.handleRunnerMessage(event));
   }
 
   async init() {
     if (this.ready) return;
-    if (!this.bridge && window.cheerpxBridge) this.bridge = window.cheerpxBridge;
-    if (!this.bridge) this.bridge = this.createSystemBridge();
-    if (!this.bridge.isConnected) {
-      // Opens/attaches to separate COI-enabled execution environment.
-      const connected = await this.bridge.open({ width: 1100, height: 760 });
-      if (!connected) throw new Error('Unable to connect to CheerpX runner (COI context).');
+    if (this.bridge && this.bridge.isConnected) {
+      this.ready = true;
+      return;
     }
+    
+    // Open the COI-enabled CheerpX context
+    const connected = await this.openCheerpXContext();
+    if (!connected) throw new Error('Unable to connect to CheerpX runner (COI context).');
+    
     this.ready = true;
   }
 
@@ -42,7 +51,7 @@ class DragonCheerpXClass {
 
   async runGUI(executable, file = null) {
     await this.init();
-    // GUI workloads are expected to launch in a new COI-enabled window/tab.
+    // GUI workloads are executed in the COI-enabled context
     const response = await this.bridge.runNativeApp(executable, [], file);
     return { ok: response.success !== false, stdout: `Launched ${executable}\n`, stderr: response.error || '' };
   }
@@ -87,27 +96,38 @@ class DragonCheerpXClass {
     return response.result || { ok: response.success !== false, stdout: '', stderr: response.error || '' };
   }
 
-  createSystemBridge() {
+  // Open the COI-enabled CheerpX context window
+  async openCheerpXContext() {
     const api = this;
-    return {
+    
+    // Create the bridge that communicates with the COI context
+    this.bridge = {
       isConnected: false,
       runner: null,
 
       async open(options = {}) {
         if (!this.runner || this.runner.closed) {
-          const width = options.width || 1100;
-          const height = options.height || 760;
+          const width = options.width || 800;
+          const height = options.height || 600;
+          const left = (screen.width - width) / 2;
+          const top = (screen.height - height) / 2;
+          
           const basePath = window.location.pathname.endsWith('/')
             ? window.location.pathname
-            : window.location.pathname.replace(/[^/]*$/, '');
-          const url = new URL('system/cheerpx-runner.html', `${window.location.origin}${basePath}`);
+            : window.location.pathname.replace(/[^/]*$/, '') + '/';
+          
+          // Open the COI-enabled cheerpx-terminal.html
+          const url = new URL('cheerpx-terminal.html', `${window.location.origin}${basePath}`).toString();
+          
           this.runner = window.open(
-            url.toString(),
-            'fireburst-cheerpx-runner',
-            `popup,width=${width},height=${height},noopener=false`
+            url,
+            'fireburst-cheerpx-terminal',
+            `popup,width=${width},height=${height},left=${left},top=${top},noopener=false`
           );
+          
           if (!this.runner) throw new Error('Popup blocked while opening the CheerpX runner.');
         }
+        
         await api.waitForRunner();
         this.isConnected = true;
         return true;
@@ -129,6 +149,8 @@ class DragonCheerpXClass {
         return api.sendRunnerRequest('uploadFile', { file, path });
       }
     };
+
+    return this.bridge.open();
   }
 
   handleRunnerMessage(event) {
@@ -181,6 +203,15 @@ class DragonCheerpXClass {
       }
     }
     throw lastError || new Error('CheerpX runner did not start.');
+  }
+
+  // Open terminal in a new window (for standalone terminal usage)
+  openTerminalWindow() {
+    const basePath = window.location.pathname.endsWith('/')
+      ? window.location.pathname
+      : window.location.pathname.replace(/[^/]*$/, '') + '/';
+    const url = new URL('system/terminal.html', `${window.location.origin}${basePath}`).toString();
+    window.open(url, 'fireburst-terminal', 'popup,width=900,height=650,noopener=false');
   }
 }
 

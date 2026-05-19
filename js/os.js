@@ -981,6 +981,15 @@ async function runWithCheerpX(file) {
     }
 }
 
+// Open terminal with Xterm.js
+function openTerminal() {
+    const basePath = window.location.pathname.endsWith('/')
+        ? window.location.pathname
+        : window.location.pathname.replace(/[^/]*$/, '') + '/';
+    const url = new URL('system/terminal.html', `${window.location.origin}${basePath}`).toString();
+    openWindow('Terminal', url);
+}
+
 async function runWithWine(file) {
     try {
         file = await ensureVFSFileContent(file);

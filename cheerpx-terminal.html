@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fireburst CheerpX Terminal - COI Context</title>
+  <!-- Cross-Origin isolation headers are applied via service worker for this page -->
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      height: 100%;
+      background: #050505;
+      color: #d7f8d7;
+      font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      overflow: hidden;
+    }
+    
+    #container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+    
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      flex-shrink: 0;
+    }
+    
+    #header .title {
+      color: #0dff00;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    
+    #header .status {
+      font-size: 11px;
+      color: #888;
+    }
+    
+    #header .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ffaa00;
+      margin-right: 6px;
+    }
+    
+    #header .status-indicator.ready {
+      background: #0dff00;
+    }
+    
+    #header .status-indicator.error {
+      background: #ff4444;
+    }
+    
+    #console {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #050505;
+      color: #d7f8d7;
+    }
+    
+    #console::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    #console::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+    
+    #console::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 5px;
+    }
+    
+    #console::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    .log-line {
+      margin-bottom: 2px;
+      line-height: 1.4;
+    }
+    
+    .log-error {
+      color: #ff4444;
+    }
+    
+    .log-success {
+      color: #0dff00;
+    }
+    
+    .log-warning {
+      color: #ffaa00;
+    }
+    
+    .log-info {
+      color: #4488ff;
+    }
+    
+    #footer {
+      padding: 6px 12px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      font-size: 11px;
+      color: #666;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="header">
+      <span class="title">🐉 CheerpX Terminal</span>
+      <span class="status">
+        <span class="status-indicator" id="status-dot"></span>
+        <span id="status-text">Initializing...</span>
+      </span>
+    </div>
+    <pre id="console">Fireburst CheerpX Terminal (COI Context) starting...</pre>
+    <div id="footer">
+      Cross-Origin Isolated: <span id="coi-status">Checking...</span> | 
+      CheerpX Runtime: <span id="cx-status">Not loaded</span>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import CheerpX
+    import * as CheerpX from './vendor/cheerpx/cx.esm.js';
+
+    const consoleEl = document.getElementById('console');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const coiStatus = document.getElementById('coi-status');
+    const cxStatus = document.getElementById('cx-status');
+
+    let cx = null;
+    let dataDevice = null;
+    let isReady = false;
+
+    // Logging utilities
+    function log(message, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `log-line${type !== 'info' ? ` log-${type}` : ''}`;
+      const timestamp = new Date().toLocaleTimeString();
+      line.textContent = `[${timestamp}] ${message}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function updateStatus(status, text) {
+      statusDot.className = 'status-indicator';
+      if (status === 'ready') statusDot.classList.add('ready');
+      else if (status === 'error') statusDot.classList.add('error');
+      statusText.textContent = text;
+    }
+
+    // Post response to parent window
+    function postResponse(id, payload) {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(Object.assign({ type: 'fireburst:cheerpx-response', id }, payload), '*');
+      }
+    }
+
+    // Check cross-origin isolation
+    function checkCOI() {
+      if (window.crossOriginIsolated) {
+        coiStatus.textContent = 'Yes ✓';
+        coiStatus.style.color = '#0dff00';
+        return true;
+      } else {
+        coiStatus.textContent = 'No ✗';
+        coiStatus.style.color = '#ff4444';
+        log('WARNING: Cross-Origin Isolation is NOT enabled. CheerpX may not work.', 'error');
+        return false;
+      }
+    }
+
+    // Initialize CheerpX
+    let initPromise = null;
+    async function initCheerpX() {
+      if (initPromise) return initPromise;
+      
+      initPromise = (async () => {
+        const hasCOI = checkCOI();
+        
+        if (!hasCOI) {
+          log('Attempting to initialize CheerpX without COI (may fail)...', 'warning');
+        }
+
+        try {
+          log('Creating CheerpX devices...', 'info');
+          
+          // Create storage devices
+          const cloudDevice = await CheerpX.CloudDevice.create('wss://disks.webvm.io/debian_large_20230522_5044875331.ext2');
+          log('✓ Cloud device created', 'success');
+          
+          const idbDevice = await CheerpX.IDBDevice.create('fireburst-cheerpx-overlay');
+          log('✓ IndexedDB device created', 'success');
+          
+          const overlayDevice = await CheerpX.OverlayDevice.create(cloudDevice, idbDevice);
+          log('✓ Overlay device created', 'success');
+          
+          const webDevice = await CheerpX.WebDevice.create('./');
+          log('✓ Web device created', 'success');
+          
+          dataDevice = await CheerpX.DataDevice.create();
+          log('✓ Data device created', 'success');
+
+          // Create Linux instance
+          log('Starting Linux virtual machine...', 'info');
+          
+          cx = await CheerpX.Linux.create({
+            mounts: [
+              { type: 'ext2', path: '/', dev: overlayDevice },
+              { type: 'dir', path: '/app', dev: webDevice },
+              { type: 'dir', path: '/data', dev: dataDevice },
+              { type: 'devs', path: '/dev' },
+              { type: 'proc', path: '/proc' }
+            ]
+          });
+
+          cx.setConsole(consoleEl);
+          
+          cxStatus.textContent = 'Ready ✓';
+          cxStatus.style.color = '#0dff00';
+          
+          isReady = true;
+          updateStatus('ready', 'CheerpX Ready');
+          log('✓ CheerpX Linux VM is ready!', 'success');
+          
+          return cx;
+        } catch (err) {
+          cxStatus.textContent = 'Failed ✗';
+          cxStatus.style.color = '#ff4444';
+          updateStatus('error', 'CheerpX Failed');
+          log(`CheerpX initialization failed: ${err.message}`, 'error');
+          throw err;
+        }
+      })();
+      
+      return initPromise;
+    }
+
+    // Execute command
+    async function executeCommand(command) {
+      await initCheerpX();
+      
+      const before = consoleEl.textContent;
+      const result = await cx.run('/bin/bash', ['-lc', command], {
+        env: ['HOME=/home/user', 'USER=user', 'SHELL=/bin/bash', 'LANG=en_US.UTF-8', 'LC_ALL=C'],
+        cwd: '/home/user',
+        uid: 1000,
+        gid: 1000
+      });
+      
+      const output = consoleEl.textContent.slice(before.length).trim();
+      return {
+        ok: result.status === 0,
+        stdout: output ? output + '\n' : '',
+        stderr: result.status === 0 ? '' : `Exited with status ${result.status}`,
+        exitCode: result.status
+      };
+    }
+
+    // Upload file
+    async function uploadFile(file, path) {
+      await initCheerpX();
+      const name = String(file && file.name ? file.name : 'upload.bin').split('/').pop().replace(/[^A-Za-z0-9._-]/g, '_');
+      const content = file && file.content ? file.content : '';
+      await dataDevice.writeFile(`${path || '/data'}/${name}`, dataURLToBytes(content));
+      return { success: true, path: `${path || '/data'}/${name}` };
+    }
+
+    // Convert data URL to bytes
+    function dataURLToBytes(dataURL) {
+      const value = String(dataURL || '');
+      const commaIndex = value.indexOf(',');
+      if (commaIndex === -1) return new TextEncoder().encode(value);
+      const meta = value.slice(0, commaIndex);
+      const payload = value.slice(commaIndex + 1);
+      if (!/;base64/i.test(meta)) return new TextEncoder().encode(decodeURIComponent(payload));
+      const binary = atob(payload);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes;
+    }
+
+    // Shell quote helper
+    function shellQuote(value) {
+      return `'${String(value).replace(/'/g, "'\\''")}'`;
+    }
+
+    // Handle messages from parent window (system/terminal.html)
+    window.addEventListener('message', async (event) => {
+      const message = event.data;
+      if (!message || message.type !== 'fireburst:cheerpx-request') return;
+      
+      log(`Received request: ${message.action}`, 'info');
+      
+      try {
+        if (message.action === 'ping') {
+          postResponse(message.id, { success: true, result: { ok: true } });
+          log('Ping responded', 'success');
+          
+        } else if (message.action === 'executeCommand') {
+          const result = await executeCommand(message.command);
+          postResponse(message.id, { success: true, result });
+          log(`Command executed: ${message.command}`, 'success');
+          
+        } else if (message.action === 'uploadFile') {
+          const result = await uploadFile(message.file, message.path);
+          postResponse(message.id, result);
+          log(`File uploaded: ${result.path}`, 'success');
+          
+        } else if (message.action === 'runNativeApp') {
+          // For native apps, we execute them and return the output
+          // The actual GUI rendering would need to be handled differently
+          const uploaded = message.file ? await uploadFile(message.file, '/data') : null;
+          const command = uploaded 
+            ? `chmod +x ${shellQuote(uploaded.path)} && ${shellQuote(uploaded.path)}` 
+            : message.executable;
+          
+          const result = await executeCommand(command);
+          postResponse(message.id, { success: true, result });
+          log(`Native app executed: ${message.executable}`, 'success');
+          
+        } else if (message.action === 'runWindowsApp') {
+          const uploaded = message.file ? await uploadFile(message.file, '/data') : null;
+          const command = `wine ${shellQuote(uploaded ? uploaded.path : message.executable)}`;
+          const result = await executeCommand(command);
+          postResponse(message.id, { success: true, result });
+          log(`Windows app executed: ${message.executable}`, 'success');
+          
+        } else {
+          throw new Error(`Unknown action: ${message.action}`);
+        }
+      } catch (err) {
+        log(`Error processing request: ${err.message}`, 'error');
+        postResponse(message.id, { success: false, error: err.message });
+      }
+    });
+
+    // Handle window close
+    window.addEventListener('beforeunload', () => {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+          type: 'fireburst:cheerpx-broadcast',
+          message: '\n\x1b[33mCheerpX context closed.\x1b[0m'
+        }, '*');
+      }
+    });
+
+    // Initialize on load
+    log('Fireburst CheerpX Terminal (COI Context) starting...', 'info');
+    log(`Cross-Origin Isolated: ${window.crossOriginIsolated}`, window.crossOriginIsolated ? 'success' : 'error');
+    
+    // Auto-initialize CheerpX
+    initCheerpX().catch(err => {
+      log(`Failed to initialize: ${err.message}`, 'error');
+      updateStatus('error', 'Initialization Failed');
+    });
+  </script>
+</body>
+</html>

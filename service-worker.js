@@ -19,7 +19,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
     const url = new URL(event.request.url);
-    const needsCheerpXIsolation = url.pathname.endsWith('/system/cheerpx-runner.html') || url.pathname.includes('/vendor/cheerpx/');
+    const needsCheerpXIsolation = url.pathname.endsWith('/system/cheerpx-runner.html') || url.pathname.endsWith('/cheerpx-terminal.html') || url.pathname.includes('/vendor/cheerpx/');
     const response = needsCheerpXIsolation
       ? new Response(res.body, {
           status: res.status,

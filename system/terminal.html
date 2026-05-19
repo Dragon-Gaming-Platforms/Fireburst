@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fireburst Terminal</title>
+  <!-- Xterm.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      height: 100%;
+      background: #0c0c0c;
+      overflow: hidden;
+      font-family: 'Cascadia Code', 'Consolas', 'Monaco', monospace;
+    }
+    
+    #terminal-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      padding: 4px;
+    }
+    
+    #terminal {
+      flex: 1;
+      min-height: 0;
+    }
+    
+    /* Custom scrollbar for terminal */
+    .xterm-viewport::-webkit-scrollbar {
+      width: 10px;
+    }
+    
+    .xterm-viewport::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+    
+    .xterm-viewport::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 5px;
+    }
+    
+    .xterm-viewport::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    /* Status bar */
+    #status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      background: #1a1a1a;
+      border-top: 1px solid #333;
+      font-size: 11px;
+      color: #888;
+      flex-shrink: 0;
+    }
+    
+    #status-bar .status-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    #status-bar .status-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0dff00;
+      margin-right: 4px;
+    }
+    
+    #status-bar .status-indicator.disconnected {
+      background: #ff4444;
+    }
+    
+    #status-bar .status-indicator.connecting {
+      background: #ffaa00;
+      animation: pulse 1s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Toolbar */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      padding: 4px 8px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    
+    #toolbar button {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #ccc;
+      padding: 4px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    
+    #toolbar button:hover {
+      background: #3a3a3a;
+    }
+    
+    #toolbar button:active {
+      background: #444;
+    }
+    
+    #toolbar .toolbar-separator {
+      width: 1px;
+      height: 20px;
+      background: #444;
+      margin: 0 4px;
+    }
+    
+    #toolbar .toolbar-title {
+      color: #0dff00;
+      font-weight: bold;
+      font-size: 13px;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="terminal-container">
+    <div id="toolbar">
+      <span class="toolbar-title">⌨️ Fireburst Terminal</span>
+      <button id="btn-clear" title="Clear terminal">Clear</button>
+      <button id="btn-copy" title="Copy selection">Copy</button>
+      <button id="btn-paste" title="Paste from clipboard">Paste</button>
+      <div class="toolbar-separator"></div>
+      <button id="btn-fullscreen" title="Toggle fullscreen">Fullscreen</button>
+    </div>
+    <div id="terminal"></div>
+    <div id="status-bar">
+      <div class="status-left">
+        <span><span class="status-indicator" id="status-dot"></span><span id="status-text">Ready</span></span>
+        <span id="cwd-display">/home/user</span>
+      </div>
+      <div class="status-right">
+        <span id="history-info">History: 0 commands</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Xterm.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+  
+  <script>
+    // Terminal state
+    const state = {
+      commandHistory: [],
+      historyIndex: -1,
+      currentInput: '',
+      isProcessing: false,
+      currentWorkingDir: '/home/user',
+      cheerpxWorker: null,
+      isConnected: false
+    };
+
+    // Initialize Xterm.js
+    const terminal = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'block',
+      fontSize: 14,
+      fontFamily: '"Cascadia Code", "Consolas", "Monaco", monospace',
+      theme: {
+        background: '#0c0c0c',
+        foreground: '#0dff00',
+        cursor: '#0dff00',
+        cursorAccent: '#0c0c0c',
+        selection: 'rgba(13, 255, 0, 0.3)',
+        black: '#0c0c0c',
+        red: '#ff4444',
+        green: '#0dff00',
+        yellow: '#ffaa00',
+        blue: '#4488ff',
+        magenta: '#ff44ff',
+        cyan: '#00cccc',
+        white: '#cccccc',
+        brightBlack: '#666666',
+        brightRed: '#ff6666',
+        brightGreen: '#66ff66',
+        brightYellow: '#ffff66',
+        brightBlue: '#66aaff',
+        brightMagenta: '#ff66ff',
+        brightCyan: '#66ffff',
+        brightWhite: '#ffffff'
+      },
+      scrollback: 10000,
+      tabStopWidth: 4,
+      allowProposedApi: true
+    });
+
+    // Fit addon for responsive sizing
+    const fitAddon = new FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+
+    // Web links addon
+    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+    terminal.loadAddon(webLinksAddon);
+
+    // Open terminal in container
+    terminal.open(document.getElementById('terminal'));
+    fitAddon.fit();
+
+    // Handle window resize
+    window.addEventListener('resize', () => fitAddon.fit());
+
+    // Welcome message
+    terminal.writeln('\x1b[1;32m╔══════════════════════════════════════════════════════════╗\x1b[0m');
+    terminal.writeln('\x1b[1;32m║\x1b[0m  \x1b[1;33mFireburst Terminal\x1b[0m - CheerpX Linux Environment            \x1b[1;32m║\x1b[0m');
+    terminal.writeln('\x1b[1;32m║\x1b[0m  Type \x1b[1;36mhelp\x1b[0m for available commands                          \x1b[1;32m║\x1b[0m');
+    terminal.writeln('\x1b[1;32m╚══════════════════════════════════════════════════════════╝\x1b[0m');
+    terminal.writeln('');
+    showPrompt();
+
+    // Command history management
+    function addToHistory(command) {
+      if (!command.trim()) return;
+      if (state.commandHistory.length > 0 && state.commandHistory[0] === command) return;
+      state.commandHistory.unshift(command);
+      if (state.commandHistory.length > 1000) state.commandHistory.pop();
+      state.historyIndex = -1;
+      updateHistoryInfo();
+    }
+
+    function updateHistoryInfo() {
+      document.getElementById('history-info').textContent = `History: ${state.commandHistory.length} commands`;
+    }
+
+    // Show prompt
+    function showPrompt() {
+      const user = window.currentUser || 'user';
+      const dir = state.currentWorkingDir.replace('/home/user', '~');
+      terminal.write(`\x1b[1;32m${user}@fireburst\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `);
+    }
+
+    // Terminal input handling
+    let inputBuffer = '';
+    
+    terminal.onData(e => {
+      if (state.isProcessing) return;
+      
+      // Handle special characters
+      if (e === '\r') {
+        // Enter key - execute command
+        const command = inputBuffer;
+        inputBuffer = '';
+        terminal.writeln('');
+        addToHistory(command);
+        executeCommand(command);
+        return;
+      }
+      
+      if (e === '\x7f' || e === '\b') {
+        // Backspace
+        if (inputBuffer.length > 0) {
+          inputBuffer = inputBuffer.slice(0, -1);
+          terminal.write('\b \b');
+        }
+        return;
+      }
+      
+      if (e === '\x1b') {
+        // Escape sequence (arrow keys, etc.)
+        // Will be handled by onKey
+        return;
+      }
+      
+      // Regular character input
+      if (e.charCodeAt(0) >= 32) {
+        inputBuffer += e;
+        terminal.write(e);
+      }
+    });
+
+    // Handle special keys
+    terminal.onKey(e => {
+      const domEvent = e.domEvent;
+      
+      if (domEvent.key === 'ArrowUp') {
+        domEvent.preventDefault();
+        if (state.historyIndex < state.commandHistory.length - 1) {
+          state.historyIndex++;
+          const cmd = state.commandHistory[state.historyIndex];
+          replaceInput(cmd);
+        }
+      } else if (domEvent.key === 'ArrowDown') {
+        domEvent.preventDefault();
+        if (state.historyIndex > 0) {
+          state.historyIndex--;
+          const cmd = state.commandHistory[state.historyIndex];
+          replaceInput(cmd);
+        } else if (state.historyIndex === 0) {
+          state.historyIndex = -1;
+          replaceInput('');
+        }
+      } else if (domEvent.key === 'Tab') {
+        domEvent.preventDefault();
+        // Simple tab completion could be added here
+      } else if (domEvent.key === 'c' && domEvent.ctrlKey) {
+        // Ctrl+C
+        terminal.writeln('^C');
+        inputBuffer = '';
+        showPrompt();
+      } else if (domEvent.key === 'l' && domEvent.ctrlKey) {
+        // Ctrl+L - clear screen
+        terminal.clear();
+        showPrompt();
+      }
+    });
+
+    function replaceInput(newInput) {
+      // Clear current input line
+      const clearCount = inputBuffer.length;
+      inputBuffer = newInput;
+      
+      // Move cursor back and clear
+      terminal.write('\b'.repeat(clearCount) + ' '.repeat(clearCount) + '\b'.repeat(clearCount));
+      terminal.write(newInput);
+    }
+
+    // Built-in commands
+    const builtInCommands = {
+      help: () => {
+        terminal.writeln('\x1b[1;33mAvailable commands:\x1b[0m');
+        terminal.writeln('  \x1b[1;36mhelp\x1b[0m              - Show this help message');
+        terminal.writeln('  \x1b[1;36mclear\x1b[0m            - Clear the terminal');
+        terminal.writeln('  \x1b[1;36mpwd\x1b[0m              - Print working directory');
+        terminal.writeln('  \x1b[1;36mls\x1b[0m               - List directory contents');
+        terminal.writeln('  \x1b[1;36mwhoami\x1b[0m           - Display current user');
+        terminal.writeln('  \x1b[1;36mdate\x1b[0m              - Show current date and time');
+        terminal.writeln('  \x1b[1;36mecho <text>\x1b[0m      - Echo text');
+        terminal.writeln('  \x1b[1;36mhistory\x1b[0m          - Show command history');
+        terminal.writeln('  \x1b[1;36mcheerpx\x1b[0m          - Test CheerpX connection');
+        terminal.writeln('  \x1b[1;36mwine <exe>\x1b[0m       - Run Windows executable via CheerpX');
+        terminal.writeln('  \x1b[1;36mrun <app>\x1b[0m        - Launch GUI application');
+        terminal.writeln('  \x1b[1;36m<command>\x1b[0m        - Execute any Linux command via CheerpX');
+      },
+      
+      clear: () => {
+        terminal.clear();
+      },
+      
+      pwd: () => {
+        terminal.writeln(state.currentWorkingDir);
+      },
+      
+      whoami: () => {
+        terminal.writeln(window.currentUser || 'user');
+      },
+      
+      date: () => {
+        terminal.writeln(new Date().toString());
+      },
+      
+      ls: () => {
+        terminal.writeln('\x1b[1;34mdesktop  documents  downloads  music  pictures  videos\x1b[0m');
+      },
+      
+      history: () => {
+        state.commandHistory.forEach((cmd, i) => {
+          terminal.writeln(`  ${state.commandHistory.length - i}  ${cmd}`);
+        });
+      },
+      
+      echo: (args) => {
+        terminal.writeln(args.join(' '));
+      },
+      
+      cheerpx: async () => {
+        terminal.writeln('\x1b[1;33mTesting CheerpX connection...\x1b[0m');
+        updateStatus('connecting', 'Connecting to CheerpX...');
+        try {
+          const result = await sendToCheerpX('echo "CheerpX is working!"');
+          if (result.ok) {
+            terminal.writeln(`\x1b[1;32m✓ CheerpX is connected and working!\x1b[0m`);
+            if (result.stdout) terminal.writeln(result.stdout.trim());
+            updateStatus('connected', 'CheerpX connected');
+          } else {
+            terminal.writeln(`\x1b[1;31m✗ CheerpX connection failed\x1b[0m`);
+            if (result.stderr) terminal.writeln(`\x1b[31m${result.stderr}\x1b[0m`);
+            updateStatus('disconnected', 'CheerpX disconnected');
+          }
+        } catch (err) {
+          terminal.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+          updateStatus('disconnected', 'CheerpX disconnected');
+        }
+      }
+    };
+
+    // Execute command
+    async function executeCommand(cmdString) {
+      if (!cmdString.trim()) {
+        showPrompt();
+        return;
+      }
+      
+      state.isProcessing = true;
+      const parts = cmdString.trim().split(/\s+/);
+      const command = parts[0].toLowerCase();
+      const args = parts.slice(1);
+      
+      // Check for built-in commands
+      if (builtInCommands[command]) {
+        if (command === 'clear') {
+          builtInCommands[command]();
+        } else {
+          const result = builtInCommands[command](args);
+          if (result instanceof Promise) await result;
+        }
+        state.isProcessing = false;
+        showPrompt();
+        return;
+      }
+      
+      // Handle wine command
+      if (command === 'wine') {
+        if (args.length === 0) {
+          terminal.writeln('\x1b[31mError: wine requires an executable path\x1b[0m');
+        } else {
+          try {
+            terminal.writeln(`\x1b[33mRunning Windows app: ${args.join(' ')}\x1b[0m`);
+            updateStatus('connecting', 'Launching Wine app...');
+            const result = await sendToCheerpX(`wine ${args.join(' ')}`);
+            if (result.stdout) terminal.writeln(result.stdout);
+            if (result.stderr) terminal.writeln(`\x1b[31m${result.stderr}\x1b[0m`);
+            updateStatus('connected', 'Wine app completed');
+          } catch (err) {
+            terminal.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+          }
+        }
+        state.isProcessing = false;
+        showPrompt();
+        return;
+      }
+      
+      // Handle run command for GUI apps
+      if (command === 'run') {
+        if (args.length === 0) {
+          terminal.writeln('\x1b[31mError: run requires an application name\x1b[0m');
+        } else {
+          try {
+            terminal.writeln(`\x1b[33mLaunching GUI: ${args.join(' ')}\x1b[0m`);
+            await launchGUIApp(args.join(' '));
+          } catch (err) {
+            terminal.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+          }
+        }
+        state.isProcessing = false;
+        showPrompt();
+        return;
+      }
+      
+      // Execute via CheerpX for any other command
+      try {
+        updateStatus('connecting', 'Executing...');
+        const result = await sendToCheerpX(cmdString);
+        
+        if (result.stdout) {
+          const lines = result.stdout.split('\n').filter(l => l.trim());
+          lines.forEach(line => terminal.writeln(line));
+        }
+        
+        if (result.stderr) {
+          const lines = result.stderr.split('\n').filter(l => l.trim());
+          lines.forEach(line => terminal.writeln(`\x1b[31m${line}\x1b[0m`));
+        }
+        
+        if (!result.ok && !result.stdout && !result.stderr) {
+          terminal.writeln(`\x1b[31mCommand failed with exit code ${result.exitCode || 'unknown'}\x1b[0m`);
+        }
+        
+        updateStatus('connected', 'Command completed');
+      } catch (err) {
+        terminal.writeln(`\x1b[31mError: ${err.message}\x1b[0m`);
+        updateStatus('disconnected', 'CheerpX disconnected');
+      }
+      
+      state.isProcessing = false;
+      showPrompt();
+    }
+
+    // Send command to CheerpX worker/context
+    async function sendToCheerpX(command) {
+      return new Promise((resolve, reject) => {
+        // Check if we have a CheerpX worker/context
+        if (!state.cheerpxWorker || state.cheerpxWorker.closed) {
+          // Try to open the CheerpX context
+          openCheerpXContext()
+            .then(() => {
+              sendCommandToWorker(command, resolve, reject);
+            })
+            .catch(reject);
+        } else {
+          sendCommandToWorker(command, resolve, reject);
+        }
+      });
+    }
+
+    function sendCommandToWorker(command, resolve, reject) {
+      const requestId = 'cx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      const timeout = setTimeout(() => {
+        reject(new Error('CheerpX did not respond within timeout'));
+      }, 120000);
+      
+      const messageHandler = (event) => {
+        if (!event.data || event.data.type !== 'fireburst:cheerpx-response') return;
+        if (event.data.id !== requestId) return;
+        
+        clearTimeout(timeout);
+        window.removeEventListener('message', messageHandler);
+        
+        if (event.data.success === false) {
+          reject(new Error(event.data.error || 'CheerpX request failed'));
+        } else {
+          resolve(event.data.result || { ok: true, stdout: '', stderr: '' });
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+      
+      state.cheerpxWorker.postMessage({
+        type: 'fireburst:cheerpx-request',
+        id: requestId,
+        action: 'executeCommand',
+        command: command
+      }, '*');
+    }
+
+    // Launch GUI app in COI context
+    async function launchGUIApp(executable) {
+      return new Promise((resolve, reject) => {
+        if (!state.cheerpxWorker || state.cheerpxWorker.closed) {
+          openCheerpXContext()
+            .then(() => {
+              sendGUIRequest(executable, resolve, reject);
+            })
+            .catch(reject);
+        } else {
+          sendGUIRequest(executable, resolve, reject);
+        }
+      });
+    }
+
+    function sendGUIRequest(executable, resolve, reject) {
+      const requestId = 'cx-gui-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      const timeout = setTimeout(() => {
+        reject(new Error('CheerpX did not respond within timeout'));
+      }, 120000);
+      
+      const messageHandler = (event) => {
+        if (!event.data || event.data.type !== 'fireburst:cheerpx-response') return;
+        if (event.data.id !== requestId) return;
+        
+        clearTimeout(timeout);
+        window.removeEventListener('message', messageHandler);
+        
+        if (event.data.success === false) {
+          reject(new Error(event.data.error || 'Failed to launch GUI'));
+        } else {
+          terminal.writeln(`\x1b[32mGUI application launched: ${executable}\x1b[0m`);
+          resolve(event.data.result);
+        }
+      };
+      
+      window.addEventListener('message', messageHandler);
+      
+      state.cheerpxWorker.postMessage({
+        type: 'fireburst:cheerpx-request',
+        id: requestId,
+        action: 'runNativeApp',
+        executable: executable
+      }, '*');
+    }
+
+    // Open CheerpX context window
+    function openCheerpXContext() {
+      return new Promise((resolve, reject) => {
+        const width = 800;
+        const height = 600;
+        const left = (screen.width - width) / 2;
+        const top = (screen.height - height) / 2;
+        
+        // Open the COI-enabled CheerpX terminal page
+        const baseUrl = window.location.pathname.endsWith('/')
+          ? window.location.pathname
+          : window.location.pathname.replace(/[^/]*$/, '') + '/';
+        
+        const url = new URL('cheerpx-terminal.html', window.location.origin + baseUrl).toString();
+        
+        state.cheerpxWorker = window.open(
+          url,
+          'fireburst-cheerpx-terminal',
+          `popup,width=${width},height=${height},left=${left},top=${top},noopener=false`
+        );
+        
+        if (!state.cheerpxWorker) {
+          reject(new Error('Popup blocked. Please allow popups for CheerpX terminal.'));
+          return;
+        }
+        
+        updateStatus('connecting', 'Opening CheerpX context...');
+        
+        // Wait for the CheerpX context to be ready
+        let attempts = 0;
+        const maxAttempts = 40;
+        
+        const checkReady = () => {
+          if (state.cheerpxWorker.closed) {
+            reject(new Error('CheerpX window was closed'));
+            return;
+          }
+          
+          attempts++;
+          if (attempts > maxAttempts) {
+            reject(new Error('CheerpX context did not start'));
+            return;
+          }
+          
+          // Send ping to check if ready
+          const pingId = 'ping-' + Date.now();
+          const pingTimeout = setTimeout(() => {
+            window.removeEventListener('message', pingHandler);
+            checkReady();
+          }, 500);
+          
+          const pingHandler = (event) => {
+            if (!event.data || event.data.type !== 'fireburst:cheerpx-response') return;
+            if (event.data.id !== pingId) return;
+            
+            clearTimeout(pingTimeout);
+            window.removeEventListener('message', pingHandler);
+            
+            state.isConnected = true;
+            updateStatus('connected', 'CheerpX connected');
+            terminal.writeln('\x1b[32m✓ CheerpX context ready\x1b[0m');
+            resolve();
+          };
+          
+          window.addEventListener('message', pingHandler);
+          
+          state.cheerpxWorker.postMessage({
+            type: 'fireburst:cheerpx-request',
+            id: pingId,
+            action: 'ping'
+          }, '*');
+        };
+        
+        // Start checking after a short delay to let the window load
+        setTimeout(checkReady, 500);
+      });
+    }
+
+    // Update status bar
+    function updateStatus(status, text) {
+      const dot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      
+      dot.className = 'status-indicator';
+      if (status === 'connecting') {
+        dot.classList.add('connecting');
+      } else if (status === 'disconnected') {
+        dot.classList.add('disconnected');
+      }
+      
+      statusText.textContent = text;
+    }
+
+    // Toolbar buttons
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      terminal.clear();
+      showPrompt();
+    });
+
+    document.getElementById('btn-copy').addEventListener('click', async () => {
+      const selection = terminal.getSelection();
+      if (selection) {
+        try {
+          await navigator.clipboard.writeText(selection);
+          terminal.writeln('\x1b[32mCopied to clipboard\x1b[0m');
+        } catch (err) {
+          terminal.writeln('\x1b[31mFailed to copy\x1b[0m');
+        }
+      }
+    });
+
+    document.getElementById('btn-paste').addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          inputBuffer += text;
+          terminal.write(text);
+        }
+      } catch (err) {
+        terminal.writeln('\x1b[31mFailed to paste (clipboard access denied)\x1b[0m');
+      }
+    });
+
+    document.getElementById('btn-fullscreen').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Handle window messages from CheerpX context
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data) return;
+      
+      // Handle CheerpX responses (already handled in sendToCheerpX)
+      // This is for any broadcast messages from the CheerpX context
+      if (data.type === 'fireburst:cheerpx-broadcast') {
+        if (data.message) {
+          terminal.writeln(data.message);
+        }
+      }
+    });
+
+    // Handle window close
+    window.addEventListener('beforeunload', () => {
+      if (state.cheerpxWorker && !state.cheerpxWorker.closed) {
+        state.cheerpxWorker.close();
+      }
+    });
+
+    // Initial fit
+    setTimeout(() => fitAddon.fit(), 100);
+  </script>
+</body>
+</html>
