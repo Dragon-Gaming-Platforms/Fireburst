@@ -822,12 +822,23 @@ function initDragSelection() {
 
 function getAppIconHTML(app, isSmall = false) {
     const fallbackClass = isSmall ? 'icon-placeholder-small' : 'icon-placeholder';
+    
+    // If icon is an emoji (short string), render as text
     if (app.icon) {
-        if (app.icon.length <= 2) return `<div class="${fallbackClass}" style="background: transparent; font-size: ${isSmall ? '18px' : '36px'}; box-shadow: none;">${app.icon}</div>`;
-        return `<img src="${app.icon}" class="${fallbackClass}" style="background: transparent; box-shadow: none; object-fit: contain;">`;
+        if (app.icon.length <= 2) {
+            return `<div class="${fallbackClass}" style="background: transparent; font-size: ${isSmall ? '18px' : '36px'}; box-shadow: none;">${app.icon}</div>`;
+        }
+        // Custom icon URL - use it with fallback
+        return `<img src="${app.icon}" class="${fallbackClass}" style="background: transparent; box-shadow: none; object-fit: contain;" onerror="this.onerror=null; this.src='${isSmall ? 'apps/preinstalled' : app.path.split('/').slice(0,-1).join('/')}/icons/default.png'">`;
     }
-    const pathParts = app.path.split('/'); const baseName = pathParts.pop().replace('.html', ''); const folderPath = pathParts.join('/'); 
-    return `<img src="${folderPath}/icons/${baseName}.png" class="${fallbackClass}" style="background:transparent; box-shadow:none; object-fit:contain;" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect fill=%22%23555%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'">`;
+    
+    // Build icon path from app path
+    const pathParts = app.path.split('/');
+    const baseName = pathParts.pop().replace('.html', '');
+    const folderPath = pathParts.join('/');
+    const defaultIcon = folderPath ? `${folderPath}/icons/default.png` : 'apps/preinstalled/icons/default.png';
+    
+    return `<img src="${folderPath}/icons/${baseName}.png" class="${fallbackClass}" style="background:transparent; box-shadow:none; object-fit:contain;" onerror="this.onerror=null; this.src='${defaultIcon}'">`;
 }
 
 async function ensureVFSFileContent(file) {
