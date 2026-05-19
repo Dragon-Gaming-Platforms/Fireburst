@@ -229,7 +229,8 @@
         
         const url = `https://browsercode.io/${model.toLowerCase()}/`;
         addOutputLine(`Opening BrowserCode (${model})...`, 'status');
-        window.open(url, '_blank');
+        // Use noopener,noreferrer to prevent CORS/referrer issues with browsercode.io
+        window.open(url, '_blank', 'noopener,noreferrer');
       }
     };
     
