@@ -44,29 +44,28 @@
         "name": "GitHub Dashboard",
         "path": "apps/preinstalled/github-dashboard.html",
         "category": "Developer Tools",
-        "preinstalled": true,
-        "icon": "🐙"
+        "preinstalled": true
     },
     {
         "id": "scramjet",
         "name": "Scramjet",
         "path": "apps/preinstalled/Scramjet.html",
         "category": "Entertainment",
-        "preinstalled": true,
+        "preinstalled": true
     },
     {
         "id": "youtube",
         "name": "YouTube",
         "path": "apps/preinstalled/Youtube.html",
         "category": "Entertainment",
-        "preinstalled": true,
+        "preinstalled": true
     },
     {
         "id": "html-editor",
         "name": "HTML Editor",
         "path": "apps/store/html-editor.html",
         "category": "Productivity",
-        "preinstalled": false,
+        "preinstalled": false
     },
     {
         "id": "github-importer",
