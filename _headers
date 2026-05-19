@@ -1,0 +1,14 @@
+t# Cross-Origin Isolation headers for CheerpX
+# These headers are required for SharedArrayBuffer which CheerpX uses
+
+/cheerpx-terminal.html
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+/system/cheerpx-runner.html
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+
+/vendor/cheerpx/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

@@ -36,7 +36,6 @@
       word-wrap: break-word;
       background: #0c0c0c;
       color: #0dff00;
-      text-shadow: 0 0 10px rgba(13, 255, 0, 0.3);
     }
     
     #terminal-output::-webkit-scrollbar {
@@ -131,7 +130,7 @@
 <body>
   <div id="terminal-container">
     <div id="terminal-output">
-<span class="terminal-line">Fireburst CheerpX Terminal</span>
+<span class="terminal-line">Fireburst Terminal</span>
 <span class="terminal-line">Type 'help' for available commands</span>
 <span class="terminal-line"></span>
     </div>
@@ -148,19 +147,7 @@
     let commandHistory = [];
     let historyIndex = -1;
     let isProcessing = false;
-    
-    // Try to access CheerpX API from parent window
-    const getCheerpXAPI = () => {
-      try {
-        if (window.parent && window.parent.DragonCheerpX) {
-          return window.parent.DragonCheerpX;
-        }
-        return null;
-      } catch (e) {
-        return null;
-      }
-    };
-    
+
     // Add output line with proper formatting
     function addOutputLine(text, type = 'output') {
       const line = document.createElement('span');
@@ -189,15 +176,6 @@
       div.textContent = text;
       return div.innerHTML;
     }
-    
-
-    function normalizeTerminalCommand(rawInput) {
-      const parts = rawInput.trim().split(/\s+/);
-      if (parts.length > 1 && parts[0].toLowerCase() === 'terminal') {
-        return parts.slice(1).join(' ');
-      }
-      return rawInput;
-    }
 
     // Built-in commands
     const builtInCommands = {
@@ -209,25 +187,49 @@
         addOutputLine('  whoami            - Display current user');
         addOutputLine('  date              - Show current date and time');
         addOutputLine('  echo <text>       - Echo text');
-        addOutputLine('  browsercode       - Launch BrowserCode AI in isolated tab');
-        addOutputLine('  wine <exe>        - Run Windows executable');
-        addOutputLine('  gui <app>         - Launch GUI application');
-        addOutputLine('  <any command>     - Execute via CheerpX bridge');
+        addOutputLine('  history           - Show command history');
+        addOutputLine('  browsercode       - Open BrowserCode AI (browsercode.io)');
+        addOutputLine('  browsercode <model> - Open BrowserCode with specific model');
+        addOutputLine('    Models: claude, gemini, gpt-4');
+        addOutputLine('  exit              - Close this terminal');
       },
       clear: () => {
-        output.innerHTML = '';
+        output.innerHTML = '<span class="terminal-line"></span>';
       },
       pwd: () => {
         addOutputLine('/home/user');
       },
       whoami: () => {
-        addOutputLine(window.parent?.currentUser || 'guest');
+        addOutputLine('user');
       },
       date: () => {
         addOutputLine(new Date().toString());
       },
       echo: (args) => {
         addOutputLine(args.join(' '));
+      },
+      history: () => {
+        commandHistory.forEach((cmd, i) => {
+          addOutputLine(`  ${commandHistory.length - i}  ${cmd}`);
+        });
+      },
+      exit: () => {
+        addOutputLine('Goodbye!', 'status');
+        setTimeout(() => window.close(), 500);
+      },
+      browsercode: (args) => {
+        const model = args[0] || 'gemini';
+        const validModels = ['claude', 'gemini', 'gpt-4', 'gpt4'];
+        
+        if (!validModels.includes(model.toLowerCase())) {
+          addOutputLine(`Unknown model: ${model}`, 'error');
+          addOutputLine('Valid models: claude, gemini, gpt-4', 'status');
+          return;
+        }
+        
+        const url = `https://browsercode.io/${model.toLowerCase()}/`;
+        addOutputLine(`Opening BrowserCode (${model})...`, 'status');
+        window.open(url, '_blank');
       }
     };
     
@@ -244,8 +246,7 @@
       addOutputLine(cmdString, 'command');
       
       try {
-        const normalizedInput = normalizeTerminalCommand(cmdString);
-        const parts = normalizedInput.trim().split(/\s+/);
+        const parts = cmdString.trim().split(/\s+/);
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
         
@@ -255,64 +256,9 @@
           if (result instanceof Promise) {
             await result;
           }
-        } else if (command === 'browsercode') {
-          const cheerpx = getCheerpXAPI();
-          if (cheerpx) {
-            addOutputLine('Launching BrowserCode in isolated tab...', 'status');
-            await cheerpx.startBrowserCode('gemini');
-          } else {
-            addOutputLine('Error: CheerpX API not available', 'error');
-          }
-        } else if (command === 'wine') {
-          const cheerpx = getCheerpXAPI();
-          if (!cheerpx) {
-            addOutputLine('Error: CheerpX API not available', 'error');
-          } else if (args.length === 0) {
-            addOutputLine('Error: wine requires an executable path', 'error');
-          } else {
-            try {
-              addOutputLine(`Executing: wine ${args.join(' ')}`, 'status');
-              const result = await cheerpx.runWine(args[0]);
-              if (result.stdout) addOutputLine(result.stdout);
-              if (result.stderr) addOutputLine(result.stderr, 'error');
-            } catch (err) {
-              addOutputLine(`Error: ${err.message}`, 'error');
-            }
-          }
-        } else if (command === 'gui') {
-          const cheerpx = getCheerpXAPI();
-          if (!cheerpx) {
-            addOutputLine('Error: CheerpX API not available', 'error');
-          } else if (args.length === 0) {
-            addOutputLine('Error: gui requires an executable path', 'error');
-          } else {
-            try {
-              addOutputLine(`Launching GUI: ${args[0]}`, 'status');
-              await cheerpx.runGUI(args[0]);
-            } catch (err) {
-              addOutputLine(`Error: ${err.message}`, 'error');
-            }
-          }
         } else {
-          // Execute via CheerpX bridge for any other command
-          const cheerpx = getCheerpXAPI();
-          if (!cheerpx) {
-            addOutputLine('Error: CheerpX bridge unavailable', 'error');
-          } else {
-            try {
-              const result = await cheerpx.execute(cmdString);
-              if (result.stdout) {
-                const lines = result.stdout.split('\n').filter(l => l);
-                lines.forEach(line => addOutputLine(line));
-              }
-              if (result.stderr) {
-                const lines = result.stderr.split('\n').filter(l => l);
-                lines.forEach(line => addOutputLine(line, 'error'));
-              }
-            } catch (err) {
-              addOutputLine(`Error: ${err.message}`, 'error');
-            }
-          }
+          addOutputLine(`Command not found: ${command}`, 'error');
+          addOutputLine("Type 'help' for available commands.", 'status');
         }
       } catch (err) {
         addOutputLine(`Error: ${err.message}`, 'error');

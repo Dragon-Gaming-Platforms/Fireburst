@@ -4,7 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Fireburst CheerpX Terminal - COI Context</title>
-  <!-- Cross-Origin isolation headers are applied via service worker for this page -->
+  <!-- 
+    NOTE: For CheerpX to work, this page needs Cross-Origin Isolation headers.
+    On GitHub Pages, you need to use a custom server or a service like:
+    - Vercel/Netlify with headers configuration
+    - A custom server with proper headers
+    - Or use the fallback mode (limited functionality)
+  -->
   <style>
     * {
       box-sizing: border-box;
@@ -122,10 +128,37 @@
       color: #666;
       flex-shrink: 0;
     }
+    
+    /* COI Warning Banner */
+    #coi-warning {
+      display: none;
+      padding: 12px;
+      background: #331a00;
+      border-bottom: 2px solid #ffaa00;
+      color: #ffaa00;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    
+    #coi-warning a {
+      color: #ffcc00;
+      text-decoration: underline;
+    }
+    
+    #coi-warning.visible {
+      display: block;
+    }
   </style>
 </head>
 <body>
   <div id="container">
+    <div id="coi-warning">
+      ⚠️ <strong>Cross-Origin Isolation not detected.</strong> CheerpX requires COI headers to function. 
+      On GitHub Pages, you need to deploy to a platform that supports custom headers (Vercel, Netlify, or a custom server).
+      See <a href="https://github.com/leaningtech/cheerpx?tab=readme-ov-file#hosting" target="_blank">CheerpX documentation</a> for details.
+      <br><br>
+      <button onclick="attemptFallback()" style="padding: 4px 12px; background: #ffaa00; color: #000; border: none; cursor: pointer; font-family: inherit;">Try Fallback Mode</button>
+    </div>
     <div id="header">
       <span class="title">🐉 CheerpX Terminal</span>
       <span class="status">
@@ -149,10 +182,12 @@
     const statusText = document.getElementById('status-text');
     const coiStatus = document.getElementById('coi-status');
     const cxStatus = document.getElementById('cx-status');
+    const coiWarning = document.getElementById('coi-warning');
 
     let cx = null;
     let dataDevice = null;
     let isReady = false;
+    let fallbackMode = false;
 
     // Logging utilities
     function log(message, type = 'info') {
@@ -187,10 +222,21 @@
       } else {
         coiStatus.textContent = 'No ✗';
         coiStatus.style.color = '#ff4444';
-        log('WARNING: Cross-Origin Isolation is NOT enabled. CheerpX may not work.', 'error');
+        coiWarning.classList.add('visible');
+        log('WARNING: Cross-Origin Isolation is NOT enabled. CheerpX requires COI headers.', 'error');
         return false;
       }
     }
+
+    // Global function for fallback button
+    window.attemptFallback = function() {
+      fallbackMode = true;
+      log('Attempting to initialize in fallback mode (limited functionality)...', 'warning');
+      initCheerpX().catch(err => {
+        log(`Fallback failed: ${err.message}`, 'error');
+        updateStatus('error', 'Initialization Failed');
+      });
+    };
 
     // Initialize CheerpX
     let initPromise = null;
@@ -200,8 +246,9 @@
       initPromise = (async () => {
         const hasCOI = checkCOI();
         
-        if (!hasCOI) {
-          log('Attempting to initialize CheerpX without COI (may fail)...', 'warning');
+        if (!hasCOI && !fallbackMode) {
+          log('Waiting for user to acknowledge COI warning...', 'warning');
+          return;
         }
 
         try {
@@ -251,6 +298,17 @@
           cxStatus.style.color = '#ff4444';
           updateStatus('error', 'CheerpX Failed');
           log(`CheerpX initialization failed: ${err.message}`, 'error');
+          
+          if (!hasCOI) {
+            log('', 'info');
+            log('═══════════════════════════════════════════════════════════', 'error');
+            log('SOLUTION: Deploy to a platform with COI header support:', 'error');
+            log('  1. Vercel: Add vercel.json with "headers" configuration', 'error');
+            log('  2. Netlify: Add _headers file with COI headers', 'error');
+            log('  3. Custom server: Configure Cross-Origin-Embedder-Policy', 'error');
+            log('═══════════════════════════════════════════════════════════', 'error');
+          }
+          
           throw err;
         }
       })();
@@ -261,6 +319,9 @@
     // Execute command
     async function executeCommand(command) {
       await initCheerpX();
+      if (!cx) {
+        return { ok: false, stdout: '', stderr: 'CheerpX not initialized. COI headers required.' };
+      }
       
       const before = consoleEl.textContent;
       const result = await cx.run('/bin/bash', ['-lc', command], {
@@ -282,6 +343,9 @@
     // Upload file
     async function uploadFile(file, path) {
       await initCheerpX();
+      if (!cx) {
+        return { success: false, error: 'CheerpX not initialized' };
+      }
       const name = String(file && file.name ? file.name : 'upload.bin').split('/').pop().replace(/[^A-Za-z0-9._-]/g, '_');
       const content = file && file.content ? file.content : '';
       await dataDevice.writeFile(`${path || '/data'}/${name}`, dataURLToBytes(content));
@@ -330,8 +394,6 @@
           log(`File uploaded: ${result.path}`, 'success');
           
         } else if (message.action === 'runNativeApp') {
-          // For native apps, we execute them and return the output
-          // The actual GUI rendering would need to be handled differently
           const uploaded = message.file ? await uploadFile(message.file, '/data') : null;
           const command = uploaded 
             ? `chmod +x ${shellQuote(uploaded.path)} && ${shellQuote(uploaded.path)}` 
@@ -371,11 +433,16 @@
     log('Fireburst CheerpX Terminal (COI Context) starting...', 'info');
     log(`Cross-Origin Isolated: ${window.crossOriginIsolated}`, window.crossOriginIsolated ? 'success' : 'error');
     
-    // Auto-initialize CheerpX
-    initCheerpX().catch(err => {
-      log(`Failed to initialize: ${err.message}`, 'error');
-      updateStatus('error', 'Initialization Failed');
-    });
+    // Auto-initialize CheerpX only if COI is available
+    if (window.crossOriginIsolated) {
+      initCheerpX().catch(err => {
+        log(`Failed to initialize: ${err.message}`, 'error');
+        updateStatus('error', 'Initialization Failed');
+      });
+    } else {
+      log('COI not detected. Click "Try Fallback Mode" to attempt anyway.', 'warning');
+      updateStatus('error', 'COI Required');
+    }
   </script>
 </body>
 </html>

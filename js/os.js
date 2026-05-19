@@ -25,7 +25,26 @@ function safeParseArray(raw, keyName) {
 }
 var installedApps = safeParseArray(safeLSGet('installedApps', '[]'), 'installedApps');
 var appRegistry = safeParseArray(safeLSGet('dynamicAppRegistry', '[]'), 'dynamicAppRegistry');
-window.browserEngines = safeParseArray(safeLSGet('browserEngines', '[]'), 'browserEngines'); 
+window.browserEngines = safeParseArray(safeLSGet('browserEngines', '[]'), 'browserEngines');
+
+// Load apps from apps.json if registry is empty
+async function loadAppsFromJSON() {
+    if (appRegistry.length > 0) return; // Already loaded
+    
+    try {
+        const response = await fetch('apps.json');
+        if (response.ok) {
+            const apps = await response.json();
+            if (Array.isArray(apps) && apps.length > 0) {
+                appRegistry = apps;
+                safeLSSet('dynamicAppRegistry', JSON.stringify(apps));
+                console.log('Loaded apps from apps.json:', apps.length);
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to load apps.json:', e);
+    }
+}
 var openWindows = []; 
 var pinnedApps = ['file-explorer', 'browser', 'settings', 'updates', 'task-manager']; 
 var ADMINS = ["jkhyer@bluevalleyk12.net", "jaxonkhyer@gmail.com"];
@@ -289,6 +308,10 @@ async function initOS(userEmail, isGuest = false) {
     } catch (e) {
         throw e;
     }
+    
+    // Load apps from apps.json if registry is empty (for non-GitHub Pages deployments)
+    await loadAppsFromJSON();
+    
     renderDesktop(); 
     renderAppStore(); 
     renderTaskbar(); 

@@ -48,17 +48,147 @@
         "icon": "🐙"
     },
     {
+        "id": "scramjet",
+        "name": "Scramjet",
+        "path": "apps/preinstalled/Scramjet.html",
+        "category": "Entertainment",
+        "preinstalled": true,
+        "icon": "🚀"
+    },
+    {
+        "id": "youtube",
+        "name": "YouTube",
+        "path": "apps/preinstalled/Youtube.html",
+        "category": "Entertainment",
+        "preinstalled": true,
+        "icon": "▶️"
+    },
+    {
         "id": "html-editor",
         "name": "HTML Editor",
         "path": "apps/store/html-editor.html",
         "category": "Productivity",
-        "preinstalled": false
+        "preinstalled": false,
+        "icon": "💻"
     },
     {
         "id": "github-importer",
         "name": "Import GitHub",
         "path": "apps/store/github-importer.html",
         "category": "Developer Tools",
-        "preinstalled": false
+        "preinstalled": false,
+        "icon": "📥"
+    },
+    {
+        "id": "github-editor",
+        "name": "GitHub Editor",
+        "path": "apps/store/github-editor.html",
+        "category": "Developer Tools",
+        "preinstalled": false,
+        "icon": "📝"
+    },
+    {
+        "id": "ai-assistant",
+        "name": "AI Assistant",
+        "path": "apps/store/ai-assistant.html",
+        "category": "Productivity",
+        "preinstalled": false,
+        "icon": "🤖"
+    },
+    {
+        "id": "messages",
+        "name": "Messages",
+        "path": "apps/store/messages.html",
+        "category": "Communication",
+        "preinstalled": false,
+        "icon": "💬"
+    },
+    {
+        "id": "incognito",
+        "name": "Incognito Browser",
+        "path": "apps/store/Incognito.html",
+        "category": "Browsers",
+        "preinstalled": false,
+        "icon": "🕵️"
+    },
+    {
+        "id": "drive-mad",
+        "name": "Drive Mad",
+        "path": "apps/store/Drive Mad.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🚗"
+    },
+    {
+        "id": "escape-road",
+        "name": "Escape Road",
+        "path": "apps/store/Escape Road.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🛣️"
+    },
+    {
+        "id": "hole-io",
+        "name": "Hole io",
+        "path": "apps/store/Hole io.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🕳️"
+    },
+    {
+        "id": "vex-8",
+        "name": "Vex 8",
+        "path": "apps/store/Vex 8.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🏃"
+    },
+    {
+        "id": "recoil",
+        "name": "Recoil",
+        "path": "apps/store/Recoil.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🔫"
+    },
+    {
+        "id": "bloons-td4",
+        "name": "Bloons TD 4",
+        "path": "apps/store/Bloons TD4.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "🎯"
+    },
+    {
+        "id": "bolt",
+        "name": "Bolt",
+        "path": "apps/store/Bolt.html",
+        "category": "Games",
+        "preinstalled": false,
+        "icon": "⚡"
+    },
+    {
+        "id": "rammerhead",
+        "name": "Rammerhead",
+        "path": "apps/store/Rammerhead.html",
+        "category": "Browsers",
+        "preinstalled": false,
+        "icon": "🐏"
+    },
+    {
+        "id": "start-my-education",
+        "name": "Start My Education",
+        "path": "apps/store/Start-My-Education.html",
+        "category": "Education",
+        "preinstalled": false,
+        "icon": "📚"
+    },
+    {
+        "id": "gn-math",
+        "name": "GN Math",
+        "path": "apps/store/Gn-math.html",
+        "category": "Education",
+        "preinstalled": false,
+        "icon": "🧮"
     }
 ]

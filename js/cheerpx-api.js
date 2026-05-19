@@ -81,12 +81,12 @@ class DragonCheerpXClass {
   }
 
   async startBrowserCode(model = 'gemini') {
-    // BrowserCode runs in separate terminal surface and should remain isolated from main OS.
+    // BrowserCode runs in separate terminal surface with Xterm.js
     const basePath = window.location.pathname.endsWith('/')
       ? window.location.pathname
-      : window.location.pathname.replace(/[^/]*$/, '');
+      : window.location.pathname.replace(/[^/]*$/, '') + '/';
     const target = new URL(`apps/preinstalled/terminal.html?model=${encodeURIComponent(model)}`, `${window.location.origin}${basePath}`);
-    window.open(target.toString(), '_blank', 'noopener');
+    window.open(target.toString(), '_blank', 'noopener,noreferrer');
     return { ok: true, model, url: target.toString() };
   }
 
